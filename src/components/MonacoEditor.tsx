@@ -35,7 +35,7 @@ interface EditorProps {
 }
 
 const Editor: React.FC<EditorProps> = ({ onChange }) => {
-    const [code, setCode] = React.useState(
+    const [code] = React.useState(
         `// This file is part of www.nand2tetris.org
 // and the book "The Elements of Computing Systems"
 // by Nisan and Schocken, MIT Press.
@@ -83,7 +83,7 @@ class Main {
         // other options
     };
 
-    const onChange_ = (newValue: string, e: any) => {
+    const onChange_ = (newValue: string /* , e: any */) => {
         onChange(newValue);
         // Handle the change
     };
