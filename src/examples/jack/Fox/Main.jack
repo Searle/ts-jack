@@ -1,0 +1,59 @@
+class Main {
+    field int a, b;
+    field boolean c;
+    static int s;
+/*
+    constructor Main new(int a, boolean b) {
+      var int i;
+      var boolean b1, b2;
+      var int i2;
+      let i = 5;
+      let i2 = i + 2;
+
+      if (a > 0) {
+        return this;
+      }
+      return this;
+    }
+
+    method int iftest(int a, int b) {
+      let b = 2;
+      if ( a = 2) {
+        return a;
+      }
+      else {
+        return b;
+      }
+    }
+  
+    function void whiletest() {
+      var int c;
+      let c = s;
+      while (c > 0) {
+        let c = c - 1;
+      }
+      return;
+    }
+
+  method void dotest1(int c, int d) {
+    let a = 1;
+    return;
+  }
+
+  method int dotest() {
+    var int c;
+    do dotest1(b, a + c);
+    do test2.f(b.a(), c.f(4));
+    return 0;
+  }
+  */
+  method void arr1() {
+    var Array a; 
+    // let a = Array.new(12);
+    // let a[a[a[14]]] = 17;
+    // let a[13] = a[14];
+    let a = -false;
+    let a = ~true;
+    return;
+  }
+}

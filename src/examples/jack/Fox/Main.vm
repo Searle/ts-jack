@@ -1,0 +1,12 @@
+function Main.arr1 1
+push argument 0
+pop pointer 0
+push constant 0
+neg
+pop local 0
+push constant 0
+not
+not
+pop local 0
+push constant 0
+return

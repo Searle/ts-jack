@@ -1,0 +1,53 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.header,
+.footer {
+    background-color: #f0f0f0;
+    padding: 10px;
+    text-align: center;
+}
+
+.content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+.editor {
+    flex: 2;
+    overflow: auto;
+    // width: calc(50% - 4px);
+    // height: calc(100% - 4px);
+    border: 2px solid #ccc;
+    // Only for SimpleCodeEditor: overflow-y: scroll;
+}
+
+.output {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    padding: 2px 5px;
+}
+
+.output > pre {
+    margin: 0;
+}
+
+.output > code {
+    color-scheme: light dark;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
+    cursor: text;
+    white-space: nowrap;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 14px;
+    font-feature-settings: "liga" 0, "calt" 0;
+    line-height: 19px;
+    -webkit-user-select: none;
+}

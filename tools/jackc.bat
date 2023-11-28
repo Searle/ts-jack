@@ -1,0 +1,8 @@
+cd "../../software 2.6.2/n2t-software-suite"
+rem call ./JackCompiler.bat "../../ts-jack/src/examples/jack/Average"
+rem call ./JackCompiler.bat "../../ts-jack/src/examples/jack/ComplexArrays"
+rem call ./JackCompiler.bat "../../ts-jack/src/examples/jack/ConvertToBin"
+rem call ./JackCompiler.bat "../../ts-jack/src/examples/jack/Pong"
+rem call ./JackCompiler.bat "../../ts-jack/src/examples/jack/Seven"
+rem call ./JackCompiler.bat "../../ts-jack/src/examples/jack/Square"
+call ./JackCompiler.bat "../../ts-jack/src/examples/jack/Fox"
