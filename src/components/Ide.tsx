@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useCallback } from "react";
 import "./Ide.css";
 // import Editor from "./SimpleCodeEditor";
-import Editor from "./MonacoEditor";
-import { compile } from "./../compilers/jackc";
+import Editor, { CursorPos } from "./MonacoEditor";
+import { CompileResult, compile } from "./../compilers/jackc";
 
 const initialCode = `// This file is part of www.nand2tetris.org
 // and the book "The Elements of Computing Systems"
@@ -35,11 +35,45 @@ class Main {
 }
 `;
 
-const MyComponent: React.FC = () => {
-    const [code, setCode] = React.useState("");
+const Ide: React.FC = () => {
+    const [compileResult, setCompileResult] = React.useState<CompileResult>(
+        () => ({ code: "", srcMap: [] })
+    );
+    const compileResultRef = React.useRef<CompileResult>();
 
-    const onChange = (code_: string) => {
-        setCode(compile(code_));
+    React.useEffect(() => {
+        compileResultRef.current = compileResult;
+    }, [compileResult]);
+
+    const [cursorPos, setCursorPos] = React.useState<CursorPos>(() => ({
+        lineNumber: 0,
+        column: 0,
+        textPos: 0,
+    }));
+
+    const [outputDecorate, setOutputDecorate] = React.useState<{
+        start: number;
+        end: number;
+    }>(() => ({ start: 0, end: 0 }));
+
+    const onChange = (newCode: string) => {
+        setCompileResult(compile(newCode));
+    };
+
+    const onCursorPositionChange = (newCursorPos: CursorPos) => {
+        setCursorPos(newCursorPos);
+        const compileResult = compileResultRef.current;
+        if (compileResult) {
+            for (const res of compileResult.srcMap) {
+                if (
+                    newCursorPos.textPos >= res.src.start &&
+                    newCursorPos.textPos < res.src.end
+                ) {
+                    setOutputDecorate(res.tgt);
+                    break;
+                }
+            }
+        }
     };
 
     return (
@@ -47,10 +81,18 @@ const MyComponent: React.FC = () => {
             <header className="header">JACK to VM compiler</header>
             <div className="content">
                 <div className="editor">
-                    <Editor onChange={onChange} initialValue={initialCode} />
+                    <Editor
+                        onValueChange={onChange}
+                        initialValue={initialCode}
+                        onCursorPositionChange={onCursorPositionChange}
+                    />
                 </div>
                 <div className="output">
-                    <Editor readOnly value={code} />
+                    <Editor
+                        readOnly
+                        value={compileResult.code}
+                        decorate={outputDecorate}
+                    />
                 </div>
             </div>
             <footer className="footer">Footer</footer>
@@ -58,4 +100,4 @@ const MyComponent: React.FC = () => {
     );
 };
 
-export default MyComponent;
+export default Ide;

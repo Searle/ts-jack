@@ -24,21 +24,23 @@ class ParseError extends Error {
 }
 
 const MakeSrcEater = (jackSrc: string) => {
-    let p = 0;
+    let pos = 0;
     let eats = 0;
+    let eatStart = 0;
+    let eatSetStart = true;
 
     const error = (message: string): never => {
         throw new ParseError(
-            p,
-            message + "\nAt: [" + jackSrc.substring(p, p + 50) + "...]"
+            pos,
+            message + "\nAt: [" + jackSrc.substring(pos, pos + 50) + "...]"
         );
     };
 
     const _eat = (pattern: string) => {
         const regExp = cachedRegExp("^(" + pattern + ")");
-        const match = jackSrc.substring(p).match(regExp);
+        const match = jackSrc.substring(pos).match(regExp);
         if (match) {
-            p += match[1].length;
+            pos += match[1].length;
             return match[1];
         }
         return undefined;
@@ -49,19 +51,19 @@ const MakeSrcEater = (jackSrc: string) => {
     };
 
     const skipComment = () => {
-        while (p < jackSrc.length) {
+        while (pos < jackSrc.length) {
             skipWs();
             if (_eat("//")) {
-                while (p < jackSrc.length) {
+                while (pos < jackSrc.length) {
                     if (_eat("\n")) break;
-                    ++p;
+                    ++pos;
                 }
                 continue;
             }
             if (_eat("/\\*")) {
-                while (p < jackSrc.length) {
+                while (pos < jackSrc.length) {
                     if (_eat("\\*/")) break;
-                    ++p;
+                    ++pos;
                 }
                 continue;
             }
@@ -71,6 +73,10 @@ const MakeSrcEater = (jackSrc: string) => {
 
     const eat: (pattern: string) => string = (pattern) => {
         skipComment();
+        if (eatSetStart === true) {
+            eatSetStart = false;
+            eatStart = pos;
+        }
         const value = _eat(pattern);
         if (value === undefined) {
             error(`${pattern} expected`);
@@ -90,7 +96,7 @@ const MakeSrcEater = (jackSrc: string) => {
     ): ReturnType<T[number]> | never => {
         let err: ParseError | undefined = undefined;
         let maxEats = eats;
-        const oldP = p;
+        const oldPos = pos;
         const oldEats = eats;
         let onFail: OnFail | undefined = undefined;
         const setOnFail = (onFail_: OnFail) => {
@@ -98,7 +104,7 @@ const MakeSrcEater = (jackSrc: string) => {
         };
         for (const fn of fns) {
             try {
-                p = oldP;
+                pos = oldPos;
                 eats = oldEats;
                 onFail = undefined;
                 return fn(setOnFail);
@@ -133,13 +139,13 @@ const MakeSrcEater = (jackSrc: string) => {
             if (--i < 0) {
                 error("internal loop watchdog");
             }
-            const oldP = p;
+            const oldPos = pos;
             const oldEats = eats;
             try {
                 fn();
             } catch (e) {
                 if (e instanceof ParseError && eats === oldEats) {
-                    p = oldP;
+                    pos = oldPos;
                     break;
                 }
                 throw e;
@@ -148,17 +154,26 @@ const MakeSrcEater = (jackSrc: string) => {
     };
 
     const checkEof = () => {
-        const oldP = p;
+        const oldPos = pos;
         const excessive = eat(".*");
         if (excessive) {
-            p = oldP;
+            pos = oldPos;
             error("Excessive bytes");
         }
     };
 
     const getLineSrc = () => {
         skipComment();
-        return jackSrc.substring(p).replace(/\n.*/s, "");
+        return jackSrc.substring(pos).replace(/\n.*/s, "");
+    };
+
+    const getLastEatPos = () => {
+        const start = eatStart;
+        return { start, end: pos };
+    };
+
+    const setMark = () => {
+        eatSetStart = true;
     };
 
     return {
@@ -167,6 +182,8 @@ const MakeSrcEater = (jackSrc: string) => {
         loop,
         checkEof,
         getLineSrc,
+        getLastEatPos,
+        setMark,
     };
 };
 
@@ -186,33 +203,33 @@ const opToCode: Record<Op, string> = {
     "=": "eq",
 } as const;
 
-interface IntegerConstant {
+type IntegerConstant = {
     $type: "IntegerConstant";
     value: string;
-}
+};
 
-interface VarName {
+type VarName = {
     $type: "VarName";
     identifier: string;
     index: Expression | undefined;
-}
+};
 
-interface SubroutineCall {
+type SubroutineCall = {
     $type: "SubroutineCall";
     className: string | undefined;
     identifier: string;
     args: Expression[];
-}
+};
 
-interface StringConstant {
+type StringConstant = {
     $type: "StringConstant";
     value: string;
-}
+};
 
-interface KeywordConstant {
+type KeywordConstant = {
     $type: "KeywordConstant";
     keyword: string;
-}
+};
 
 type Term =
     | Expression
@@ -223,31 +240,31 @@ type Term =
     | KeywordConstant
     | UnaryOp;
 
-interface OpTerm {
+type OpTerm = {
     $type: "OpTerm";
     op: Op;
     term: Term;
-}
+};
 
-interface UnaryOp {
+type UnaryOp = {
     $type: "UnaryOp";
     op: "-" | "~";
     term: Term;
-}
+};
 
-interface Expression {
+type Expression = {
     $type: "Expression";
     opTerms: OpTerm[];
-}
+};
 
-interface Var {
+type Var = {
     type: string;
     identifier: string;
-}
+};
 
-interface CompiledLine {
+type CompiledLine = {
     code: string;
-}
+};
 
 const MakeCodeGen = (
     collectLine: (compiledLine: CompiledLine) => void,
@@ -320,10 +337,10 @@ const MakeCodeGen = (
         genCode(`function ${className}.${funcName} ${locals.length}`);
     };
 
-    interface FindVar {
+    type FindVar = {
         var1: Var | undefined;
         code: string;
-    }
+    };
 
     const findVar = (identifier: string): FindVar | undefined => {
         const findIdentifier = (v: Var) => v.identifier === identifier;
@@ -561,9 +578,8 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
     const eatTermValue = () =>
         eatOne([
             (): IntegerConstant => ({
-                // FIXME: 0 ..32767
                 $type: "IntegerConstant",
-                value: eat("[0-9]+"),
+                value: eat("[12]?\\d{1,4}|3[01]\\d{3}|32[0-7]\\d{2}"),
             }),
             eatSubroutineCall,
             eatVarName,
@@ -646,12 +662,12 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
                     if (varName.index !== undefined) {
                         cg.genExpr(varName.index);
                         cg.genCode(`push ${cg.findVar(varName.identifier)}`);
-                        cg.genCode(`add`);
+                        cg.genCode("add");
                         cg.genExpr(expr);
-                        cg.genCode(`pop temp 0`);
-                        cg.genCode(`pop pointer 1`);
-                        cg.genCode(`push temp 0`);
-                        cg.genCode(`pop that 0`);
+                        cg.genCode("pop temp 0");
+                        cg.genCode("pop pointer 1");
+                        cg.genCode("push temp 0");
+                        cg.genCode("pop that 0");
                     } else {
                         cg.genExpr(expr);
                         cg.genCode(`pop ${cg.findVar(varName.identifier)}`);
@@ -820,7 +836,7 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
 
             eat("\\}");
         });
-        eat("}");
+        eat("\\}");
 
         checkEof();
     };
@@ -830,10 +846,28 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
     };
 };
 
-const compile = (srcStr: string) => {
+export type SrcMap = Array<{
+    src: { start: number; end: number };
+    tgt: { start: number; end: number };
+}>;
+
+export type CompileResult = {
+    code: string;
+    srcMap: SrcMap;
+};
+
+const compile = (srcStr: string): CompileResult => {
     const src = MakeSrcEater(srcStr);
     let code = "";
+    const srcMap: SrcMap = [];
     const codeGen = MakeCodeGen((codeLine) => {
+        srcMap.push({
+            src: src.getLastEatPos(),
+            tgt: {
+                start: code.length,
+                end: code.length + codeLine.code.length + 1,
+            },
+        });
         code += codeLine.code + "\n";
     });
     const parser = MakeParser(src, codeGen);
@@ -844,7 +878,7 @@ const compile = (srcStr: string) => {
         code += String(e) + "\n";
     }
 
-    return code;
+    return { code, srcMap };
 };
 
 export { compile };

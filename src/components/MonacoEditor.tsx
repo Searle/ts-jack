@@ -6,18 +6,28 @@ import type { editor } from "monaco-editor";
 // import { defineJackLanguage } from "./jackLanguageDef"; // Adjust the path as necessary
 import "./MonacoEditor.css";
 
+export type CursorPos = {
+    lineNumber: number;
+    column: number;
+    textPos: number;
+};
+
 interface EditorProps {
-    onChange?: (code: string) => void;
+    onValueChange?: (code: string) => void;
+    onCursorPositionChange?: (pos: CursorPos) => void;
     readOnly?: boolean;
     initialValue?: string;
     value?: string;
+    decorate?: { start: number; end: number };
 }
 
 const Editor: React.FC<EditorProps> = ({
-    onChange,
+    onValueChange,
+    onCursorPositionChange,
     readOnly,
     initialValue,
     value,
+    decorate,
 }) => {
     const editorRef = React.useRef<editor.IStandaloneCodeEditor | null>(null);
     const monacoRef = React.useRef<Monaco | null>(null);
@@ -26,26 +36,62 @@ const Editor: React.FC<EditorProps> = ({
 
     const [editValue] = React.useState(initialValue);
 
-    const onCursorPositionChange = (
-        event: editor.ICursorPositionChangedEvent
-    ) => {
+    React.useEffect(() => {
+        if (decorate === undefined || decorate.start < 0 || decorate.end < 0) {
+            return;
+        }
+
+        const decorations = decorationsRef.current;
+        if (!decorations) return;
+
+        const monaco = monacoRef.current;
+        if (!monaco) return;
+
         const editor = editorRef.current;
         if (!editor) return;
 
-        const position = event.position;
-        const { lineNumber, column } = position;
-        const textUntilPosition = editor.getModel()?.getValueInRange({
-            startLineNumber: 1,
-            startColumn: 1,
-            endLineNumber: lineNumber,
-            endColumn: column,
-        });
+        const model = editor.getModel();
+        if (!model) return;
 
-        const charPosition = textUntilPosition ? textUntilPosition.length : 0;
-        console.log("Character Position: ", position, charPosition);
+        const pos1 = model.getPositionAt(decorate.start);
+        const pos2 = model.getPositionAt(decorate.end);
+
+        // Define a decoration
+        const decoration: editor.IModelDeltaDecoration = {
+            range: new monaco.Range(
+                pos1.lineNumber,
+                pos1.column,
+                pos2.lineNumber,
+                pos2.column
+            ),
+            options: {
+                className: "myCustomDecoration",
+            },
+        };
+
+        decorations.set([decoration]);
+    }, [decorate]);
+
+    const onCursorPositionChange_ = (
+        event: editor.ICursorPositionChangedEvent
+    ) => {
+        if (!onCursorPositionChange) return;
+
+        const editor = editorRef.current;
+        if (!editor) return;
+
+        const model = editor.getModel();
+        if (!model) return;
+
+        const position = event.position;
+        console.log("EVT", event.position, model.getOffsetAt(position));
+        onCursorPositionChange({
+            ...position,
+            textPos: model.getOffsetAt(position) ?? -1,
+        });
     };
 
-    const decorate = () => {
+    const initDecoration = () => {
         const editor = editorRef.current;
         if (!editor) return;
 
@@ -63,29 +109,25 @@ const Editor: React.FC<EditorProps> = ({
             },
         };
 
-        // Add the decoration to the collection
         decorationsRef.current.set([decoration]);
     };
 
     const onEditorMount: OnMount = (editor, monaco) => {
         editorRef.current = editor;
         monacoRef.current = monaco;
-        editor.onDidChangeCursorPosition(
-            (event: editor.ICursorPositionChangedEvent) =>
-                onCursorPositionChange(event)
-        );
-        decorate();
+        editor.onDidChangeCursorPosition(onCursorPositionChange_);
+        initDecoration();
     };
 
     React.useEffect(() => {
         // defineJackLanguage();
-        onChange?.(editValue ?? "");
+        onValueChange?.(editValue ?? "");
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const onValueChange = (newValue: string | undefined /* , e: any */) => {
+    const onChange = (newValue: string | undefined /* , e: any */) => {
         if (newValue !== undefined) {
-            onChange?.(newValue ?? "");
+            onValueChange?.(newValue ?? "");
         }
     };
 
@@ -99,7 +141,7 @@ const Editor: React.FC<EditorProps> = ({
                 readOnly,
             }}
             value={readOnly ? value : editValue}
-            onChange={onValueChange}
+            onChange={onChange}
             onMount={onEditorMount}
         />
     );

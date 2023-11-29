@@ -27,8 +27,7 @@
 .output {
     flex: 1;
     overflow: auto;
-    display: flex;
-    padding: 2px 5px;
+    border: 2px solid #ccc;
 }
 
 .output > pre {
