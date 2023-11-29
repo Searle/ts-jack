@@ -1,7 +1,7 @@
-.react-monaco-editor-container {
-    // empty
-}
-
 .Editor textarea {
     outline: none;
+}
+
+.myCustomDecoration {
+    background-color: yellow;
 }
