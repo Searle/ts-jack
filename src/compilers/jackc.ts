@@ -27,7 +27,7 @@ const MakeSrcEater = (jackSrc: string) => {
     let pos = 0;
     let eats = 0;
     let eatStart = 0;
-    let eatSetStart = true;
+    let eatSetStart = false;
 
     const error = (message: string): never => {
         throw new ParseError(
@@ -72,11 +72,11 @@ const MakeSrcEater = (jackSrc: string) => {
     };
 
     const eat: (pattern: string) => string = (pattern) => {
-        skipComment();
         if (eatSetStart === true) {
             eatSetStart = false;
             eatStart = pos;
         }
+        skipComment();
         const value = _eat(pattern);
         if (value === undefined) {
             error(`${pattern} expected`);
@@ -169,11 +169,8 @@ const MakeSrcEater = (jackSrc: string) => {
 
     const getLastEatPos = () => {
         const start = eatStart;
-        return { start, end: pos };
-    };
-
-    const setMark = () => {
         eatSetStart = true;
+        return { start, end: pos };
     };
 
     return {
@@ -183,7 +180,6 @@ const MakeSrcEater = (jackSrc: string) => {
         checkEof,
         getLineSrc,
         getLastEatPos,
-        setMark,
     };
 };
 

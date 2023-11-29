@@ -64,15 +64,25 @@ const Ide: React.FC = () => {
         setCursorPos(newCursorPos);
         const compileResult = compileResultRef.current;
         if (compileResult) {
+            let tgt: { start: number; end: number } | undefined;
             for (const res of compileResult.srcMap) {
                 if (
                     newCursorPos.textPos >= res.src.start &&
                     newCursorPos.textPos < res.src.end
                 ) {
-                    setOutputDecorate(res.tgt);
-                    break;
+                    if (tgt === undefined) {
+                        tgt = res.tgt;
+                        continue;
+                    }
+                    if (res.tgt.start < tgt.start) {
+                        tgt.start = res.tgt.start;
+                    }
+                    if (res.tgt.end > tgt.end) {
+                        tgt.end = res.tgt.end;
+                    }
                 }
             }
+            if (tgt) setOutputDecorate(tgt);
         }
     };
 

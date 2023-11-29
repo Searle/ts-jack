@@ -70,6 +70,7 @@ const Editor: React.FC<EditorProps> = ({
         };
 
         decorations.set([decoration]);
+        editor.revealRange(decoration.range);
     }, [decorate]);
 
     const onCursorPositionChange_ = (
