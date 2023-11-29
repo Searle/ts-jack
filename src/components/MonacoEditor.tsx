@@ -100,16 +100,6 @@ const Editor: React.FC<EditorProps> = ({
 
         // Create a decorations collection
         decorationsRef.current = editor.createDecorationsCollection();
-
-        // Define a decoration
-        const decoration: editor.IModelDeltaDecoration = {
-            range: new monaco.Range(1, 1, 1, 10),
-            options: {
-                className: "myCustomDecoration",
-            },
-        };
-
-        decorationsRef.current.set([decoration]);
     };
 
     const onEditorMount: OnMount = (editor, monaco) => {
