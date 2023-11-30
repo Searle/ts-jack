@@ -442,23 +442,11 @@ const MakeCodeGen = (
                 return;
             }
             if (term.$type === "KeywordConstant") {
-                if (term.keyword === "false") {
-                    genCode("push constant 0");
-                    return;
-                }
+                genCode("push constant 0");
                 if (term.keyword === "true") {
-                    genCode("push constant 0");
                     genCode("not");
-                    return;
                 }
-                if (term.keyword === "null") {
-                    genCode("push constant 0");
-                    return;
-                }
-                if (term.keyword === "false") {
-                    genCode("push pointer 0");
-                    return;
-                }
+                return;
             }
             if (term.$type === "UnaryOp") {
                 genTerm(term.term);
@@ -608,8 +596,6 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
                 term: eatTermValue(),
             }),
             (): Expression => {
-                // (expr)
-                // FIXME: 0 ..32767
                 eat("\\(");
                 const expr = eatExpression();
                 eat("\\)");
@@ -646,7 +632,7 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
     const parseBlock = () => {
         let returnFound = false;
         loop(() => {
-            console.log("    >>> ", srcEater.getLineSrc());
+            cg.genCode("// " + srcEater.getLineSrc());
             eatOne([
                 () => {
                     eat("let");

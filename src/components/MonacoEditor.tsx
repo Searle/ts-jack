@@ -3,6 +3,8 @@ import React from "react";
 import MonacoEditor, { OnMount, Monaco } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 
+export type MonacoEditorInstance = editor.IStandaloneCodeEditor;
+
 // import { defineJackLanguage } from "./jackLanguageDef"; // Adjust the path as necessary
 import "./MonacoEditor.css";
 
@@ -15,6 +17,7 @@ export type CursorPos = {
 interface EditorProps {
     onValueChange?: (code: string) => void;
     onCursorPositionChange?: (pos: CursorPos) => void;
+    onEditorMount?: (editor: editor.IStandaloneCodeEditor) => void;
     readOnly?: boolean;
     initialValue?: string;
     value?: string;
@@ -24,6 +27,7 @@ interface EditorProps {
 const Editor: React.FC<EditorProps> = ({
     onValueChange,
     onCursorPositionChange,
+    onEditorMount: onEditorMount_,
     readOnly,
     initialValue,
     value,
@@ -105,6 +109,7 @@ const Editor: React.FC<EditorProps> = ({
 
     const onEditorMount: OnMount = (editor, monaco) => {
         editorRef.current = editor;
+        onEditorMount_?.(editor);
         monacoRef.current = monaco;
         editor.onDidChangeCursorPosition(onCursorPositionChange_);
         initDecoration();
