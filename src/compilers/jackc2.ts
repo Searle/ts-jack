@@ -35,7 +35,7 @@ const emptyBite: Bite = {
 
 const MakeSrcEater = (jackSrc: string) => {
     let pos = 0;
-    let eats = 0;
+    let nextBiteId = 0;
 
     const error = (message: string): never => {
         throw new ParseError(
@@ -89,7 +89,7 @@ const MakeSrcEater = (jackSrc: string) => {
         }
         // console.log("EAT", value);
         return {
-            id: eats++,
+            id: nextBiteId++,
             value,
             start,
             end: pos,
@@ -102,29 +102,30 @@ const MakeSrcEater = (jackSrc: string) => {
         fns: Array<EatOneFunc<T>>
     ): T | never => {
         let err: ParseError | undefined = undefined;
-        let maxEats = eats;
+        let maxBiteId = nextBiteId;
         const oldPos = pos;
-        const oldEats = eats;
+        const oldNextBiteId = nextBiteId;
         for (const fn of fns) {
             try {
                 pos = oldPos;
-                eats = oldEats;
+                nextBiteId = oldNextBiteId;
                 return fn();
             } catch (e) {
                 if (e instanceof ParseError) {
                     if (err === undefined) {
                         err = e;
                     }
-                    if (eats > maxEats) {
+                    if (nextBiteId > maxBiteId) {
                         err = e;
-                        maxEats = eats;
+                        maxBiteId = nextBiteId;
                     }
+                    nextBiteId = oldNextBiteId;
                 } else {
                     throw e;
                 }
             }
         }
-        eats = maxEats;
+        nextBiteId = maxBiteId;
         if (err) throw err;
         error("eatOne");
         throw "dummy"; // make typing happy
@@ -142,12 +143,12 @@ const MakeSrcEater = (jackSrc: string) => {
                 error("internal loop watchdog");
             }
             const oldPos = pos;
-            const oldEats = eats;
+            const oldEats = nextBiteId;
             try {
                 const one = fn();
                 all.push(one);
             } catch (e) {
-                if (e instanceof ParseError && eats === oldEats) {
+                if (e instanceof ParseError && nextBiteId === oldEats) {
                     pos = oldPos;
                     break;
                 }
@@ -206,23 +207,27 @@ type CompiledLine = {
     code: string;
 };
 
+type BiteRefs = Array<{
+    bite1: Bite;
+    bite2: Bite;
+}>;
+
 const MakeCodeGen = (
     collectLine: (compiledLine: CompiledLine) => void,
     compareVmSrc?: string
 ) => {
     let className: string;
-    let labelNo = 0;
-
-    let isStaticFunc = false;
 
     const fields: Var[] = [];
     const statics: Var[] = [];
+
+    let isStaticFunc = false;
     let funcArgs: Var[] = [];
     let locals: Var[] = [];
 
-    const getClassName = () => className;
+    const biteRefs: BiteRefs = [];
 
-    const nextLabelNo = () => labelNo++;
+    const getClassName = () => className;
 
     const addFieldOrStatic = (
         fieldOrStatic: string,
@@ -262,24 +267,18 @@ const MakeCodeGen = (
         });
     };
 
-    const genClass = (className_: string) => {
+    const setClassName = (className_: string) => {
         className = className_;
     };
 
-    const genFuncLike = (
+    const setFuncValues = (
         funcType: string,
-        funcName: string,
         funcArgs_: Var[],
         locals_: Var[]
     ) => {
         funcArgs = funcArgs_;
         locals = locals_;
         isStaticFunc = funcType === "function";
-        // TODO fix Bite
-        genCode(
-            emptyBite,
-            `function ${className}.${funcName} ${locals.length}`
-        );
     };
 
     type FindVar = {
@@ -331,21 +330,25 @@ const MakeCodeGen = (
 
     const getFields = () => fields;
 
-    const addCodeRef = (b1: Bite, b2: Bite) => {
-        // TODO
+    const addBiteRef = (bite1: Bite, bite2: Bite | undefined) => {
+        if (bite2 !== undefined) {
+            biteRefs.push({ bite1, bite2 });
+        }
     };
+
+    const getBiteRefs = () => biteRefs;
 
     return {
         genCode,
         getClassName,
-        nextLabelNo,
         addFieldOrStatic,
-        genClass,
-        genFuncLike,
+        setClassName,
+        setFuncValues,
         findVar,
         findVarCode,
         getFields,
-        addCodeRef,
+        addBiteRef,
+        getBiteRefs,
     };
 };
 
@@ -358,6 +361,7 @@ type CodeSnippetGen = () => void;
 
 const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
     const { eat, eatOne, loop, checkEof } = srcEater;
+    const { genCode, addBiteRef, findVarCode, getClassName, findVar } = cg;
 
     const eatIdentifier = () => eat(identifierPattern);
 
@@ -371,23 +375,23 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
 
                 return () => {
                     genIndexSnippet();
-                    cg.genCode(
+                    genCode(
                         identifier,
-                        `push ${cg.findVarCode(identifier.value)}`
+                        `push ${findVarCode(identifier.value)}`
                     );
-                    cg.genCode(identifier, `add`);
-                    cg.genCode(identifier, `pop pointer 1`);
-                    cg.genCode(identifier, `push that 0`);
-                    cg.addCodeRef(identifier, openBracket);
-                    cg.addCodeRef(identifier, closeBracket);
+                    genCode(identifier, `add`);
+                    genCode(identifier, `pop pointer 1`);
+                    genCode(identifier, `push that 0`);
+                    addBiteRef(identifier, openBracket);
+                    addBiteRef(identifier, closeBracket);
                 };
             },
             () => {
                 const identifier = eatIdentifier();
                 return () => {
-                    cg.genCode(
+                    genCode(
                         identifier,
-                        `push ${cg.findVarCode(identifier.value)}`
+                        `push ${findVarCode(identifier.value)}`
                     );
                 };
             },
@@ -395,7 +399,6 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
 
     const eatSubroutineCall = (): CodeSnippetGen => {
         let className: Bite | undefined = undefined;
-        // TODO DOT
         let dot: Bite | undefined = undefined;
         let identifier: Bite;
         eatOne([
@@ -431,29 +434,32 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
             let argsCount = genArgSnippets.length;
             let callClassName: string;
 
-            cg.addCodeRef(identifier, openBracket);
-            cg.addCodeRef(identifier, closeBracket);
+            addBiteRef(identifier, openBracket);
+            addBiteRef(identifier, dot);
+            addBiteRef(identifier, closeBracket);
             if (className === undefined) {
-                callClassName = cg.getClassName();
-                cg.genCode(identifier, "push pointer 0");
+                callClassName = getClassName();
+                genCode(identifier, "push pointer 0");
                 ++argsCount;
             } else {
                 callClassName = className.value;
-                const var1 = cg.findVar(className.value);
+                const var1 = findVar(className.value);
                 if (var1 !== undefined) {
                     const varType = var1.var1?.type;
                     if (varType === undefined) {
                         throw "genSubroutineCall: call with this not impl";
                     }
                     callClassName = varType;
-                    cg.genCode(className, `push ${var1.code}`);
+                    genCode(className, `push ${var1.code}`);
                     ++argsCount;
+                } else {
+                    addBiteRef(identifier, className);
                 }
             }
             for (const genArgSnippet of genArgSnippets) {
                 genArgSnippet();
             }
-            cg.genCode(
+            genCode(
                 identifier,
                 `call ${callClassName}.${identifier.value} ${argsCount}`
             );
@@ -463,7 +469,7 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
     const eatIntegerConstant = (): CodeSnippetGen => {
         const value = eat("[12]?\\d{1,4}|3[01]\\d{3}|32[0-7]\\d{2}");
         return () => {
-            cg.genCode(value, `push constant ${value.value}`);
+            genCode(value, `push constant ${value.value}`);
         };
     };
 
@@ -472,12 +478,12 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
 
         return () => {
             if (keyword.value === "this") {
-                cg.genCode(keyword, `push ${cg.findVarCode(keyword.value)}`);
+                genCode(keyword, `push ${findVarCode(keyword.value)}`);
                 return;
             }
-            cg.genCode(keyword, "push constant 0");
+            genCode(keyword, "push constant 0");
             if (keyword.value === "true") {
-                cg.genCode(keyword, "not");
+                genCode(keyword, "not");
             }
         };
     };
@@ -488,14 +494,14 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
         const closeQuote = eat('\\"');
 
         return () => {
-            cg.addCodeRef(str, openQuote);
-            cg.addCodeRef(str, closeQuote);
-            cg.genCode(str, `// "${str.value}"`);
-            cg.genCode(str, `push constant ${str.value.length}`);
-            cg.genCode(str, "call String.new 1");
+            addBiteRef(str, openQuote);
+            addBiteRef(str, closeQuote);
+            genCode(str, `// "${str.value}"`);
+            genCode(str, `push constant ${str.value.length}`);
+            genCode(str, "call String.new 1");
             for (const ch of str.value) {
-                cg.genCode(str, `push constant ${ch.charCodeAt(0)}`);
-                cg.genCode(str, "call String.appendChar 2");
+                genCode(str, `push constant ${ch.charCodeAt(0)}`);
+                genCode(str, "call String.appendChar 2");
             }
             return;
         };
@@ -507,7 +513,7 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
 
         return () => {
             term();
-            cg.genCode(op, op.value === "-" ? "neg" : "not");
+            genCode(op, op.value === "-" ? "neg" : "not");
         };
     };
 
@@ -556,7 +562,7 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
         return () => {
             for (const { op, genTermSnippet } of opTerms.values()) {
                 genTermSnippet();
-                if (op !== undefined) cg.genCode(op, opToCode[op.value as Op]);
+                if (op !== undefined) genCode(op, opToCode[op.value as Op]);
             }
         };
     };
@@ -570,7 +576,7 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
             const lineSrc = srcEater.getLineSrc();
             return [
                 () => {
-                    cg.genCode(emptyBite, "// " + lineSrc);
+                    genCode(emptyBite, "// " + lineSrc);
                 },
                 eatOne([
                     () => {
@@ -601,96 +607,100 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
                         eat(";");
 
                         return () => {
-                            if (openBracket) {
-                                cg.addCodeRef(varName, openBracket);
-                            }
-                            if (closeBracket) {
-                                cg.addCodeRef(varName, closeBracket);
-                            }
+                            addBiteRef(varName, openBracket);
+                            addBiteRef(varName, closeBracket);
                             if (genIndexSnippet !== undefined) {
                                 genIndexSnippet();
-                                cg.genCode(
+                                genCode(
                                     varName,
-                                    `push ${cg.findVarCode(varName.value)}`
+                                    `push ${findVarCode(varName.value)}`
                                 );
-                                cg.genCode(varName, "add");
+                                genCode(varName, "add");
                                 genExprSnippet();
-                                cg.genCode(varName, "pop temp 0");
-                                cg.genCode(varName, "pop pointer 1");
-                                cg.genCode(varName, "push temp 0");
-                                cg.genCode(varName, "pop that 0");
+                                genCode(varName, "pop temp 0");
+                                genCode(varName, "pop pointer 1");
+                                genCode(varName, "push temp 0");
+                                genCode(varName, "pop that 0");
                             } else {
                                 genExprSnippet();
-                                cg.genCode(
+                                genCode(
                                     varName,
-                                    `pop ${cg.findVarCode(varName.value)}`
+                                    `pop ${findVarCode(varName.value)}`
                                 );
                             }
                         };
                     },
                     () => {
+                        const ifs: Bite[] = [];
                         const if1 = eat("if");
-                        eat("\\(");
+                        ifs.push(eat("\\("));
                         const genExprSnippet = eatExpression();
-                        eat("\\)");
-                        eat("\\{");
+                        ifs.push(eat("\\)"));
+                        ifs.push(eat("\\{"));
                         const genIfBlockSnippet = eatBlock();
                         let genElseBlockSnippet: CodeSnippetGen | undefined;
                         let else1: Bite | undefined;
+                        let if2: Bite | undefined;
+                        const elses: Bite[] = [];
                         eatOne([
                             () => {
-                                eat("\\}");
+                                if2 = eat("\\}");
                                 else1 = eat("else");
-                                eat("\\{");
+                                elses.push(eat("\\{"));
                                 genElseBlockSnippet = eatBlock();
-                                eat("\\}");
+                                elses.push(eat("\\}"));
                             },
                             () => {
-                                eat("\\}");
+                                if2 = eat("\\}");
                                 else1 = undefined;
                                 genElseBlockSnippet = undefined;
                             },
                         ]);
 
                         return () => {
+                            addBiteRef(if1, if2);
+                            ifs.forEach((ref) => addBiteRef(if1, ref));
                             const labelNo = ifLabelNo++;
                             genExprSnippet();
-                            cg.genCode(if1, `if-goto IF_TRUE${labelNo}`);
-                            cg.genCode(if1, `goto IF_FALSE${labelNo}`);
-                            cg.genCode(if1, `label IF_TRUE${labelNo}`);
+                            genCode(if1, `if-goto IF_TRUE${labelNo}`);
+                            genCode(if1, `goto IF_FALSE${labelNo}`);
+                            genCode(if1, `label IF_TRUE${labelNo}`);
                             genIfBlockSnippet();
                             if (genElseBlockSnippet) {
-                                cg.genCode(if1, "// } if ");
-                                cg.genCode(else1!, `goto IF_END${labelNo}`);
-                                cg.genCode(else1!, `label IF_FALSE${labelNo}`);
+                                elses.forEach((ref) => addBiteRef(else1!, ref));
+                                genCode(if1, "// } if ");
+                                genCode(else1!, `goto IF_END${labelNo}`);
+                                genCode(else1!, `label IF_FALSE${labelNo}`);
                                 genElseBlockSnippet();
-                                cg.genCode(else1!, "// } else ");
-                                cg.genCode(if1, `label IF_END${labelNo}`);
+                                genCode(else1!, "// } else ");
+                                genCode(if1, `label IF_END${labelNo}`);
                             } else {
-                                cg.genCode(if1, "// } if");
-                                cg.genCode(if1, `label IF_FALSE${labelNo}`);
+                                genCode(if1, "// } if");
+                                genCode(if1, `label IF_FALSE${labelNo}`);
                             }
                         };
                     },
                     () => {
+                        const whiles: Bite[] = [];
                         const while1 = eat("while");
-                        eat("\\(");
+                        whiles.push(eat("\\("));
                         const genExprSnippet = eatExpression();
-                        eat("\\)");
-                        eat("\\{");
+                        whiles.push(eat("\\)"));
+                        whiles.push(eat("\\{"));
                         const genBlockSnippet = eatBlock();
-                        eat("\\}");
+                        whiles.push(eat("\\}"));
 
                         return () => {
                             const labelNo = whileLabelNo++;
-                            cg.genCode(while1, `label WHILE_EXP${labelNo}`);
+                            whiles.forEach((ref) => addBiteRef(while1, ref));
+                            genCode(while1, `label WHILE_EXP${labelNo}`);
                             genExprSnippet();
-                            cg.genCode(while1, "not");
-                            cg.genCode(while1, `if-goto WHILE_END${labelNo}`);
+                            genCode(while1, "not");
+                            genCode(while1, `if-goto WHILE_END${labelNo}`);
                             genBlockSnippet();
-                            cg.genCode(while1, "// } while");
-                            cg.genCode(while1, `goto WHILE_EXP${labelNo}`);
-                            cg.genCode(while1, `label WHILE_END${labelNo}`);
+                            genCode(while1, "// } while");
+                            genCode(while1, `goto WHILE_EXP${labelNo}`);
+                            genCode(while1, `label WHILE_END${labelNo}`);
                         };
                     },
                     () => {
@@ -700,11 +710,10 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
 
                         return () => {
                             genSubroutineCallSnippet();
-                            cg.genCode(do1, "pop temp 0");
+                            genCode(do1, "pop temp 0");
                         };
                     },
                     () => {
-                        returnFound = true;
                         const return1 = eat("return");
                         let genExprSnippet: CodeSnippetGen | undefined;
                         eatOne([
@@ -719,12 +728,13 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
                         ]);
 
                         return () => {
+                            returnFound = true;
                             if (genExprSnippet) {
                                 genExprSnippet();
                             } else {
-                                cg.genCode(return1, "push constant 0");
+                                genCode(return1, "push constant 0");
                             }
-                            cg.genCode(return1, "return");
+                            genCode(return1, "return");
                         };
                     },
                 ]),
@@ -739,33 +749,33 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
 
     const eatType = () => eat("int|char|boolean|" + identifierPattern);
 
-    // TODO Bite
     type VarDecl = {
-        type: string;
-        identifier: string;
+        type: Bite;
+        identifier: Bite;
     };
 
     const eatVarDecl = (): VarDecl => ({
-        type: eatType().value,
-        identifier: eatIdentifier().value,
+        type: eatType(),
+        identifier: eatIdentifier(),
     });
 
     const parseClass = () => {
+        const { setClassName, addFieldOrStatic, setFuncValues, getFields } = cg;
+
         eat("class");
-        // TODO Bite
-        cg.genClass(eatIdentifier().value);
+        setClassName(eatIdentifier().value);
         eat("\\{");
         loop(() => {
             const fieldOrStatic = eat("field|static");
             const type = eatType();
-            cg.addFieldOrStatic(
+            addFieldOrStatic(
                 fieldOrStatic.value,
                 type.value,
                 eatIdentifier().value
             );
             loop(() => {
                 eat(",");
-                cg.addFieldOrStatic(
+                addFieldOrStatic(
                     fieldOrStatic.value,
                     type.value,
                     eatIdentifier().value
@@ -777,14 +787,14 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
             const funcType = eat("constructor|method|function");
             // We ignore the return type
             eatIdentifier();
-            const funcName = eatIdentifier().value;
+            const funcName = eatIdentifier();
             eat("\\(");
 
             const funcArgs: VarDecl[] = [];
             if (funcType.value === "method") {
                 funcArgs.push({
-                    type: "<this>",
-                    identifier: "<this>",
+                    type: emptyBite,
+                    identifier: emptyBite,
                 });
             }
             eatOne([
@@ -810,39 +820,51 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
                     eat(",");
                     locals.push({
                         type: locals[0].type,
-                        identifier: eatIdentifier().value,
+                        identifier: eatIdentifier(),
                     });
                 });
                 eat(";");
             });
 
-            cg.genFuncLike(funcType.value, funcName, funcArgs, locals);
+            const varDeclToVar = (var1: VarDecl): Var => ({
+                type: var1.type.value,
+                identifier: var1.identifier.value,
+            });
+
+            setFuncValues(
+                funcType.value,
+                funcArgs.map(varDeclToVar),
+                locals.map(varDeclToVar)
+            );
+            genCode(
+                funcType,
+                `function ${getClassName()}.${funcName.value} ${locals.length}`
+            );
+            addBiteRef(funcType, funcName);
 
             if (funcType.value === "method") {
-                cg.genCode(funcType, "push argument 0");
-                cg.genCode(funcType, "pop pointer 0");
+                genCode(funcType, "push argument 0");
+                genCode(funcType, "pop pointer 0");
             }
 
             if (funcType.value === "constructor") {
-                cg.genCode(funcType, `push constant ${cg.getFields().length}`);
-                cg.genCode(funcType, "call Memory.alloc 1");
-                cg.genCode(funcType, "pop pointer 0");
+                genCode(funcType, `push constant ${getFields().length}`);
+                genCode(funcType, "call Memory.alloc 1");
+                genCode(funcType, "pop pointer 0");
             }
 
-            ifLabelNo = 0;
-            whileLabelNo = 0;
             ifLabelNo = 0;
             whileLabelNo = 0;
             returnFound = false;
             eatBlock()();
 
             if (!returnFound) {
-                cg.genCode(emptyBite, "push constant 0");
-                cg.genCode(emptyBite, "return");
+                genCode(funcType, "push constant 0");
+                genCode(funcType, "return");
             }
 
             eat("\\}");
-            cg.genCode(funcType, "// } func");
+            genCode(funcType, "// } func");
         });
         eat("\\}");
 
@@ -855,7 +877,7 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
 };
 
 export type SrcMap = Array<{
-    src: { start: number; end: number };
+    src: Bite[];
     tgt: { start: number; end: number };
 }>;
 
@@ -872,10 +894,12 @@ export const emptyCompileResult: CompileResult = {
 export const compile = (srcStr: string): CompileResult => {
     const src = MakeSrcEater(srcStr);
     let code = "";
+
     const srcMap: SrcMap = [];
+
     const codeGen = MakeCodeGen((codeLine) => {
         srcMap.push({
-            src: { start: codeLine.bite.start, end: codeLine.bite.end },
+            src: [codeLine.bite],
             tgt: {
                 start: code.length,
                 end: code.length + codeLine.code.length + 1,
@@ -890,6 +914,13 @@ export const compile = (srcStr: string): CompileResult => {
     } catch (e) {
         code += String(e) + "\n";
     }
+
+    const biteRefs = codeGen.getBiteRefs();
+    srcMap.forEach(({ src }) => {
+        biteRefs.forEach(({ bite1, bite2 }) => {
+            if (bite1 === src[0]) src.push(bite2);
+        });
+    });
 
     return { code, srcMap };
 };

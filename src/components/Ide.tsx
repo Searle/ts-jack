@@ -1,64 +1,45 @@
 import React from "react";
 import "./Ide.css";
-// import Editor from "./SimpleCodeEditor";
-import Editor, { CursorPos } from "./MonacoEditor";
+import Editor, { CursorPos, Decors } from "./MonacoEditor";
 import {
     CompileResult,
     compile,
     emptyCompileResult,
 } from "./../compilers/jackc2";
 
-/*
-import {
-    CompileResult as CompileResult1,
-    compile as compile1,
-} from "./../compilers/jackc";
-import { useSyncedScroll } from "./useSyncedScroll";
-*/
+const initialSrc = `// This is a comment
 
-const initialCode = `// This file is part of www.nand2tetris.org
-// and the book "The Elements of Computing Systems"
-// by Nisan and Schocken, MIT Press.
-// File name: projects/11/Average/Main.jack
-
-// (Same as projects/09/Average/Main.jack)
-
-// Inputs some numbers and computes their average
 class Main {
-    function void main() {
-        var Array a; 
-        var int length;
-        var int i, sum;
+    function void nothing() {
+        // empty
+    }
 
-        let length = Keyboard.readInt("H"); // ow many numbers? ");
-        let a = Array.new(length); // constructs the array
-        
+    function void main(int length) {
+        var Array a; 
+        var int dummy;
+        var int i, sum1, sum2;
+
+        do Output.clear();
+        let dummy = Output.print("Test");
+
+        let a = Array.new(length);
         let i = 0;
+        let sum1 = 0;
+        let sum2 = 0;
         while (i < length) {
-            let a[i] = Keyboard.readInt("E"); // nter a number: ");
-            let sum = sum + a[i];
-            let i = i + 1;
+            if (i & 1 = 0) {
+                let sum1 = sum1 + a[i];
+            }
+            else {
+                let sum2 = sum2 + a[i];
+            }
         }
-        
-        do Output.printString("T"); // he average is ");
-        do Output.printInt(sum / length);
-        return;
+        return sum1 - sum2;
     }
 }
 `;
 
 const Ide: React.FC = () => {
-    /*
-    const [compileResult1, setCompileResult1] = React.useState<CompileResult1>(
-        () => ({ code: "", srcMap: [] })
-    );
-    const compileResultRef1 = React.useRef<CompileResult1>();
-
-    React.useEffect(() => {
-        compileResultRef1.current = compileResult1;
-    }, [compileResult1]);
-    */
-
     const [compileResult, setCompileResult] = React.useState<CompileResult>(
         () => emptyCompileResult
     );
@@ -68,18 +49,8 @@ const Ide: React.FC = () => {
         compileResultRef.current = compileResult;
     }, [compileResult]);
 
-    /*
-    const [cursorPos, setCursorPos] = React.useState<CursorPos>(() => ({
-        lineNumber: 0,
-        column: 0,
-        textPos: 0,
-    }));
-    */
-
-    const [outputDecorate, setOutputDecorate] = React.useState<{
-        start: number;
-        end: number;
-    }>(() => ({ start: 0, end: 0 }));
+    const [srcDecors, setSrcDecors] = React.useState<Decors>([]);
+    const [outputDecors, setOutputDecors] = React.useState<Decors>([]);
 
     // const { setEditor1Ref, setEditor2Ref } = useSyncedScroll();
 
@@ -88,29 +59,42 @@ const Ide: React.FC = () => {
         setCompileResult(compile(newCode));
     };
 
-    const onCursorPositionChange = (newCursorPos: CursorPos) => {
-        // setCursorPos(newCursorPos);
+    const makeDecors = (compileResult: CompileResult, srcPos: number) => {
+        const nextSrcDecors: Decors = [];
+        const nextOutputDecors: Decors = [];
+        for (const res of compileResult.srcMap) {
+            if (
+                res.src.some(
+                    (bite) => srcPos >= bite.start && srcPos < bite.end
+                )
+            ) {
+                res.src.forEach((bite) => nextSrcDecors.push(bite));
+                nextOutputDecors.push(res.tgt);
+            }
+        }
+        setSrcDecors(nextSrcDecors);
+        setOutputDecors(nextOutputDecors);
+    };
+
+    const onSrcCursorPositionChange = (newCursorPos: CursorPos) => {
         const compileResult = compileResultRef.current;
         if (compileResult) {
-            let tgt: { start: number; end: number } | undefined;
+            makeDecors(compileResult, newCursorPos.textPos);
+        }
+    };
+
+    const onOutputCursorPositionChange = (newCursorPos: CursorPos) => {
+        const compileResult = compileResultRef.current;
+        if (compileResult) {
             for (const res of compileResult.srcMap) {
                 if (
-                    newCursorPos.textPos >= res.src.start &&
-                    newCursorPos.textPos < res.src.end
+                    newCursorPos.textPos >= res.tgt.start &&
+                    newCursorPos.textPos < res.tgt.end
                 ) {
-                    if (tgt === undefined) {
-                        tgt = res.tgt;
-                        continue;
-                    }
-                    if (res.tgt.start < tgt.start) {
-                        tgt.start = res.tgt.start;
-                    }
-                    if (res.tgt.end > tgt.end) {
-                        tgt.end = res.tgt.end;
-                    }
+                    makeDecors(compileResult, res.src[0].start);
+                    break;
                 }
             }
-            if (tgt) setOutputDecorate(tgt);
         }
     };
 
@@ -118,19 +102,21 @@ const Ide: React.FC = () => {
         <div className="container">
             <header className="header">JACK to VM compiler</header>
             <div className="content">
-                <div className="editor">
+                <div className="src">
                     <Editor
                         onValueChange={onChange}
-                        initialValue={initialCode}
-                        onCursorPositionChange={onCursorPositionChange}
+                        initialValue={initialSrc}
+                        decors={srcDecors}
+                        onCursorPositionChange={onSrcCursorPositionChange}
                     />
                 </div>
                 <div className="output">
                     <Editor
                         readOnly
                         value={compileResult.code}
-                        decorate={outputDecorate}
+                        decors={outputDecors}
                         // onEditorMount={setEditor1Ref}
+                        onCursorPositionChange={onOutputCursorPositionChange}
                     />
                 </div>
                 {/*

@@ -14,6 +14,11 @@ export type CursorPos = {
     textPos: number;
 };
 
+export type Decors = Array<{
+    start: number;
+    end: number;
+}>;
+
 interface EditorProps {
     onValueChange?: (code: string) => void;
     onCursorPositionChange?: (pos: CursorPos) => void;
@@ -21,7 +26,7 @@ interface EditorProps {
     readOnly?: boolean;
     initialValue?: string;
     value?: string;
-    decorate?: { start: number; end: number };
+    decors?: Decors;
 }
 
 const Editor: React.FC<EditorProps> = ({
@@ -31,7 +36,7 @@ const Editor: React.FC<EditorProps> = ({
     readOnly,
     initialValue,
     value,
-    decorate,
+    decors,
 }) => {
     const editorRef = React.useRef<editor.IStandaloneCodeEditor | null>(null);
     const monacoRef = React.useRef<Monaco | null>(null);
@@ -41,12 +46,13 @@ const Editor: React.FC<EditorProps> = ({
     const [editValue] = React.useState(initialValue);
 
     React.useEffect(() => {
-        if (decorate === undefined || decorate.start < 0 || decorate.end < 0) {
-            return;
-        }
-
         const decorations = decorationsRef.current;
         if (!decorations) return;
+
+        if (decors === undefined || decors.length === 0) {
+            decorations.set([]);
+            return;
+        }
 
         const monaco = monacoRef.current;
         if (!monaco) return;
@@ -57,25 +63,26 @@ const Editor: React.FC<EditorProps> = ({
         const model = editor.getModel();
         if (!model) return;
 
-        const pos1 = model.getPositionAt(decorate.start);
-        const pos2 = model.getPositionAt(decorate.end);
+        const ds: editor.IModelDeltaDecoration[] = [];
 
-        // Define a decoration
-        const decoration: editor.IModelDeltaDecoration = {
-            range: new monaco.Range(
-                pos1.lineNumber,
-                pos1.column,
-                pos2.lineNumber,
-                pos2.column
-            ),
-            options: {
-                className: "myCustomDecoration",
-            },
-        };
-
-        decorations.set([decoration]);
-        editor.revealRange(decoration.range);
-    }, [decorate]);
+        for (const decor of decors) {
+            const pos1 = model.getPositionAt(decor.start);
+            const pos2 = model.getPositionAt(decor.end);
+            ds.push({
+                range: new monaco.Range(
+                    pos1.lineNumber,
+                    pos1.column,
+                    pos2.lineNumber,
+                    pos2.column
+                ),
+                options: {
+                    className: "myCustomDecoration",
+                },
+            });
+        }
+        decorations.set(ds);
+        editor.revealRange(ds[0].range);
+    }, [decors]);
 
     const onCursorPositionChange_ = (
         event: editor.ICursorPositionChangedEvent
@@ -89,7 +96,6 @@ const Editor: React.FC<EditorProps> = ({
         if (!model) return;
 
         const position = event.position;
-        console.log("EVT", event.position, model.getOffsetAt(position));
         onCursorPositionChange({
             ...position,
             textPos: model.getOffsetAt(position) ?? -1,
