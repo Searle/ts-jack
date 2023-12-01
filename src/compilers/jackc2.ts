@@ -673,7 +673,7 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
                                 genCode(else1!, `label IF_FALSE${labelNo}`);
                                 genElseBlockSnippet();
                                 genCode(else1!, "// } else ");
-                                genCode(if1, `label IF_END${labelNo}`);
+                                genCode(else1!, `label IF_END${labelNo}`);
                             } else {
                                 genCode(if1, "// } if");
                                 genCode(if1, `label IF_FALSE${labelNo}`);
