@@ -1,19 +1,19 @@
 .MonacoEditor {
 
-    --alpha: .5;
-    
-    --color-0: 255, 102, 102; /* Bright Red */
-    --color-1: 255, 178, 102; /* Bright Orange */
-    --color-2: 255, 255, 102; /* Bright Yellow */
-    --color-3: 178, 255, 102; /* Bright Lime */
-    --color-4: 102, 255, 102; /* Bright Green */
-    --color-5: 102, 255, 178; /* Bright Turquoise */
-    --color-6: 102, 255, 255; /* Bright Cyan */
-    --color-7: 102, 178, 255; /* Bright Sky Blue */
-    --color-8: 102, 102, 255; /* Bright Blue */
-    --color-9: 178, 102, 255; /* Bright Purple */
-    --color-10: 255, 102, 255; /* Bright Magenta */
-    --color-11: 255, 102, 178; /* Bright Pink */
+    --alpha: .7;
+
+    --color-0: 255, 105, 97;  /* Bright Coral */
+    --color-1: 255, 165, 0;   /* Orange */
+    --color-2: 255, 223, 0;   /* Gold */
+    --color-3: 255, 255, 102; /* Bright Yellow */
+    --color-4: 173, 255, 47;  /* Green Yellow */
+    --color-5: 127, 255, 0;   /* Chartreuse */
+    --color-6: 60, 179, 113;  /* Medium Sea Green */
+    --color-7: 32, 178, 170;  /* Light Sea Green */
+    --color-8: 255, 69, 0;    /* Red Orange */
+    --color-9: 255, 99, 71;   /* Tomato */
+    --color-10: 255, 140, 0;  /* Dark Orange */
+    --color-11: 255, 20, 147; /* Deep Pink */
 
     .decoration0 {
         background-color: rgba(var(--color-0), var(--alpha));
