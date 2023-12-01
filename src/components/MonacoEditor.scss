@@ -1,0 +1,54 @@
+.MonacoEditor {
+
+    --alpha: .5;
+    
+    --color-0: 255, 102, 102; /* Bright Red */
+    --color-1: 255, 178, 102; /* Bright Orange */
+    --color-2: 255, 255, 102; /* Bright Yellow */
+    --color-3: 178, 255, 102; /* Bright Lime */
+    --color-4: 102, 255, 102; /* Bright Green */
+    --color-5: 102, 255, 178; /* Bright Turquoise */
+    --color-6: 102, 255, 255; /* Bright Cyan */
+    --color-7: 102, 178, 255; /* Bright Sky Blue */
+    --color-8: 102, 102, 255; /* Bright Blue */
+    --color-9: 178, 102, 255; /* Bright Purple */
+    --color-10: 255, 102, 255; /* Bright Magenta */
+    --color-11: 255, 102, 178; /* Bright Pink */
+
+    .decoration0 {
+        background-color: rgba(var(--color-0), var(--alpha));
+    }
+    .decoration1 {
+        background-color: rgba(var(--color-1), var(--alpha));
+    }
+    .decoration2 {
+        background-color: rgba(var(--color-2), var(--alpha));
+    }
+    .decoration3 {
+        background-color: rgba(var(--color-3), var(--alpha));
+    }
+    .decoration4 {
+        background-color: rgba(var(--color-4), var(--alpha));
+    }
+    .decoration5 {
+        background-color: rgba(var(--color-5), var(--alpha));
+    }
+    .decoration6 {
+        background-color: rgba(var(--color-6), var(--alpha));
+    }
+    .decoration7 {
+        background-color: rgba(var(--color-7), var(--alpha));
+    }
+    .decoration8 {
+        background-color: rgba(var(--color-8), var(--alpha));
+    }
+    .decoration9 {
+        background-color: rgba(var(--color-9), var(--alpha));
+    }
+    .decoration10 {
+        background-color: rgba(var(--color-10), var(--alpha));
+    }
+    .decoration11 {
+        background-color: rgba(var(--color-11), var(--alpha));
+    }
+}

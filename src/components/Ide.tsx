@@ -64,6 +64,8 @@ const Ide: React.FC = () => {
         startPos: number,
         endPos: number
     ) => {
+        const colors: Record<number, number> = {};
+        let colorNo = 0;
         const nextSrcDecors: Decors = [];
         const nextOutputDecors: Decors = [];
         for (const res of compileResult.srcMap) {
@@ -72,8 +74,14 @@ const Ide: React.FC = () => {
                     (bite) => endPos >= bite.start && startPos < bite.end
                 )
             ) {
-                res.src.forEach((bite) => nextSrcDecors.push(bite));
-                nextOutputDecors.push(res.tgt);
+                let color = colors[res.src[0].id];
+                if (color === undefined) {
+                    color = colors[res.src[0].id] = colorNo++;
+                }
+                res.src.forEach((bite) => {
+                    nextSrcDecors.push({ ...bite, color });
+                });
+                nextOutputDecors.push({ ...res.tgt, color });
             }
         }
         setSrcDecors(nextSrcDecors);

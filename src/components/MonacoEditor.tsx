@@ -6,7 +6,7 @@ import type { editor, Range } from "monaco-editor";
 export type MonacoEditorInstance = editor.IStandaloneCodeEditor;
 
 // import { defineJackLanguage } from "./jackLanguageDef"; // Adjust the path as necessary
-import "./MonacoEditor.css";
+import "./MonacoEditor.scss";
 
 export type CursorPos = {
     lineNumber: number;
@@ -22,7 +22,23 @@ export type Selection = {
 export type Decors = Array<{
     start: number;
     end: number;
+    color: number;
 }>;
+
+const colors: string[] = [
+    "#708090",
+    "#8FBC8F",
+    "#BC8F8F",
+    "#D2B48C",
+    "#778899",
+    "#6A5ACD",
+    "#B0C4DE",
+    "#5F9EA0",
+    "#8B4513",
+    "#A0522D",
+    "#CD853F",
+    "#A9A9A9",
+];
 
 interface EditorProps {
     onValueChange?: (code: string) => void;
@@ -81,7 +97,7 @@ const Editor: React.FC<EditorProps> = ({
                     pos2.column
                 ),
                 options: {
-                    className: "decoration",
+                    className: "decoration" + (decor.color % colors.length),
                 },
             });
         }
@@ -160,6 +176,7 @@ const Editor: React.FC<EditorProps> = ({
             height="100%"
             language="java"
             theme="vs-light"
+            className="MonacoEditor"
             options={{
                 readOnly,
             }}

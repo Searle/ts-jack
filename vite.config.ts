@@ -9,4 +9,10 @@ export default defineConfig({
         react(),
         plainText(["**/*.jack", "**/*.vm"], { namedExport: false }),
     ],
+    css: {
+        transformer: "lightningcss",
+    },
+    build: {
+        cssMinify: "lightningcss",
+    },
 });
