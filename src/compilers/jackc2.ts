@@ -1,7 +1,3 @@
-// import jackSrc from "./examples/example_fox";
-// import jackSrc from "./examples/Fox/Main.jack";
-// import vmSrc from "./examples/Fox/Main.vm";
-
 const regExpCache: Map<string, RegExp> = new Map();
 
 const cachedRegExp = (pattern: string) => {
@@ -23,12 +19,12 @@ class ParseError extends Error {
     }
 }
 
-type Bite = {
+type Bite = Readonly<{
     id: number;
     value: string;
     start: number;
     end: number;
-};
+}>;
 
 const emptyBite: Bite = {
     id: -1,
@@ -40,7 +36,6 @@ const emptyBite: Bite = {
 const MakeSrcEater = (jackSrc: string) => {
     let pos = 0;
     let eats = 0;
-    let eatStart = 0;
 
     const error = (message: string): never => {
         throw new ParseError(
@@ -86,9 +81,6 @@ const MakeSrcEater = (jackSrc: string) => {
 
     const eat: (pattern: string) => Bite = (pattern) => {
         skipComment();
-        if (eatStart === 0) {
-            eatStart = pos;
-        }
         const start = pos;
         const value = _eat(pattern);
         if (value === undefined) {
@@ -179,17 +171,12 @@ const MakeSrcEater = (jackSrc: string) => {
         return jackSrc.substring(pos).replace(/\n.*/s, "");
     };
 
-    const getLastEatPos = () => {
-        return { start: eatStart, end: pos };
-    };
-
     return {
         eat,
         eatOne,
         loop,
         checkEof,
         getLineSrc,
-        getLastEatPos,
     };
 };
 
@@ -215,6 +202,7 @@ type Var = {
 };
 
 type CompiledLine = {
+    bite: Bite;
     code: string;
 };
 
@@ -251,9 +239,9 @@ const MakeCodeGen = (
     const vmSrcLines = compareVmSrc?.split(/\r?\n/);
     let diffCount = 10;
 
-    const genCode = (code: string) => {
+    const genCode = (bite: Bite, code: string) => {
         if (vmSrcLines === undefined || code.startsWith("//")) {
-            collectLine({ code });
+            collectLine({ bite, code });
             return;
         }
         let prefix = "   ";
@@ -264,6 +252,7 @@ const MakeCodeGen = (
             }
         }
         collectLine({
+            bite,
             code:
                 prefix +
                 ("[" + code + "]").padEnd(30) +
@@ -271,11 +260,6 @@ const MakeCodeGen = (
                 vmSrcLines[lineNo++] +
                 "]",
         });
-    };
-
-    const genCodeXX = (bite: Bite, code: string) => {
-        // TODO: bite
-        genCode(code);
     };
 
     const genClass = (className_: string) => {
@@ -291,7 +275,11 @@ const MakeCodeGen = (
         funcArgs = funcArgs_;
         locals = locals_;
         isStaticFunc = funcType === "function";
-        genCode(`function ${className}.${funcName} ${locals.length}`);
+        // TODO fix Bite
+        genCode(
+            emptyBite,
+            `function ${className}.${funcName} ${locals.length}`
+        );
     };
 
     type FindVar = {
@@ -349,7 +337,6 @@ const MakeCodeGen = (
 
     return {
         genCode,
-        genCodeXX,
         getClassName,
         nextLabelNo,
         addFieldOrStatic,
@@ -384,13 +371,13 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
 
                 return () => {
                     genIndexSnippet();
-                    cg.genCodeXX(
+                    cg.genCode(
                         identifier,
                         `push ${cg.findVarCode(identifier.value)}`
                     );
-                    cg.genCodeXX(identifier, `add`);
-                    cg.genCodeXX(identifier, `pop pointer 1`);
-                    cg.genCodeXX(identifier, `push that 0`);
+                    cg.genCode(identifier, `add`);
+                    cg.genCode(identifier, `pop pointer 1`);
+                    cg.genCode(identifier, `push that 0`);
                     cg.addCodeRef(identifier, openBracket);
                     cg.addCodeRef(identifier, closeBracket);
                 };
@@ -398,7 +385,7 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
             () => {
                 const identifier = eatIdentifier();
                 return () => {
-                    cg.genCodeXX(
+                    cg.genCode(
                         identifier,
                         `push ${cg.findVarCode(identifier.value)}`
                     );
@@ -448,7 +435,7 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
             cg.addCodeRef(identifier, closeBracket);
             if (className === undefined) {
                 callClassName = cg.getClassName();
-                cg.genCodeXX(identifier, "push pointer 0");
+                cg.genCode(identifier, "push pointer 0");
                 ++argsCount;
             } else {
                 callClassName = className.value;
@@ -459,7 +446,7 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
                         throw "genSubroutineCall: call with this not impl";
                     }
                     callClassName = varType;
-                    cg.genCodeXX(className, `push ${var1.code}`);
+                    cg.genCode(className, `push ${var1.code}`);
                     ++argsCount;
                 }
             }
@@ -467,6 +454,7 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
                 genArgSnippet();
             }
             cg.genCode(
+                identifier,
                 `call ${callClassName}.${identifier.value} ${argsCount}`
             );
         };
@@ -475,7 +463,7 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
     const eatIntegerConstant = (): CodeSnippetGen => {
         const value = eat("[12]?\\d{1,4}|3[01]\\d{3}|32[0-7]\\d{2}");
         return () => {
-            cg.genCode(`push constant ${value.value}`);
+            cg.genCode(value, `push constant ${value.value}`);
         };
     };
 
@@ -484,28 +472,30 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
 
         return () => {
             if (keyword.value === "this") {
-                cg.genCodeXX(keyword, `push ${cg.findVarCode(keyword.value)}`);
+                cg.genCode(keyword, `push ${cg.findVarCode(keyword.value)}`);
                 return;
             }
-            cg.genCodeXX(keyword, "push constant 0");
+            cg.genCode(keyword, "push constant 0");
             if (keyword.value === "true") {
-                cg.genCodeXX(keyword, "not");
+                cg.genCode(keyword, "not");
             }
         };
     };
 
     const eatStringConstant = (): CodeSnippetGen => {
-        const openQuot = eat('\\"');
+        const openQuote = eat('\\"');
         const str = eat('[^\\"\\n]+');
-        const closeQuot = eat('\\"');
+        const closeQuote = eat('\\"');
 
         return () => {
-            cg.genCode(`// "${str.value}"`);
-            cg.genCode(`push constant ${str.value.length}`);
-            cg.genCode("call String.new 1");
+            cg.addCodeRef(str, openQuote);
+            cg.addCodeRef(str, closeQuote);
+            cg.genCode(str, `// "${str.value}"`);
+            cg.genCode(str, `push constant ${str.value.length}`);
+            cg.genCode(str, "call String.new 1");
             for (const ch of str.value) {
-                cg.genCode(`push constant ${ch.charCodeAt(0)}`);
-                cg.genCode(`call String.appendChar 2`);
+                cg.genCode(str, `push constant ${ch.charCodeAt(0)}`);
+                cg.genCode(str, "call String.appendChar 2");
             }
             return;
         };
@@ -517,15 +507,15 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
 
         return () => {
             term();
-            cg.genCode(op.value === "-" ? "neg" : "not");
+            cg.genCode(op, op.value === "-" ? "neg" : "not");
         };
     };
 
     const eatExpressionInBrackets = (): CodeSnippetGen => {
-        // TODO brackets
-        const openBracket = eat("\\(");
+        // Can't addCodeRef without ref
+        eat("\\(");
         const genExprSnippet = eatExpression();
-        const closeBracket = eat("\\)");
+        eat("\\)");
 
         return () => {
             genExprSnippet();
@@ -566,8 +556,7 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
         return () => {
             for (const { op, genTermSnippet } of opTerms.values()) {
                 genTermSnippet();
-                if (op !== undefined)
-                    cg.genCodeXX(op, opToCode[op.value as Op]);
+                if (op !== undefined) cg.genCode(op, opToCode[op.value as Op]);
             }
         };
     };
@@ -581,7 +570,7 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
             const lineSrc = srcEater.getLineSrc();
             return [
                 () => {
-                    cg.genCode("// " + lineSrc);
+                    cg.genCode(emptyBite, "// " + lineSrc);
                 },
                 eatOne([
                     () => {
@@ -612,43 +601,53 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
                         eat(";");
 
                         return () => {
+                            if (openBracket) {
+                                cg.addCodeRef(varName, openBracket);
+                            }
+                            if (closeBracket) {
+                                cg.addCodeRef(varName, closeBracket);
+                            }
                             if (genIndexSnippet !== undefined) {
                                 genIndexSnippet();
                                 cg.genCode(
+                                    varName,
                                     `push ${cg.findVarCode(varName.value)}`
                                 );
-                                cg.genCode("add");
+                                cg.genCode(varName, "add");
                                 genExprSnippet();
-                                cg.genCode("pop temp 0");
-                                cg.genCode("pop pointer 1");
-                                cg.genCode("push temp 0");
-                                cg.genCode("pop that 0");
+                                cg.genCode(varName, "pop temp 0");
+                                cg.genCode(varName, "pop pointer 1");
+                                cg.genCode(varName, "push temp 0");
+                                cg.genCode(varName, "pop that 0");
                             } else {
                                 genExprSnippet();
                                 cg.genCode(
+                                    varName,
                                     `pop ${cg.findVarCode(varName.value)}`
                                 );
                             }
                         };
                     },
                     () => {
-                        eat("if");
+                        const if1 = eat("if");
                         eat("\\(");
                         const genExprSnippet = eatExpression();
                         eat("\\)");
                         eat("\\{");
                         const genIfBlockSnippet = eatBlock();
                         let genElseBlockSnippet: CodeSnippetGen | undefined;
+                        let else1: Bite | undefined;
                         eatOne([
                             () => {
                                 eat("\\}");
-                                eat("else");
+                                else1 = eat("else");
                                 eat("\\{");
                                 genElseBlockSnippet = eatBlock();
                                 eat("\\}");
                             },
                             () => {
                                 eat("\\}");
+                                else1 = undefined;
                                 genElseBlockSnippet = undefined;
                             },
                         ]);
@@ -656,25 +655,25 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
                         return () => {
                             const labelNo = ifLabelNo++;
                             genExprSnippet();
-                            cg.genCode(`if-goto IF_TRUE${labelNo}`);
-                            cg.genCode(`goto IF_FALSE${labelNo}`);
-                            cg.genCode(`label IF_TRUE${labelNo}`);
+                            cg.genCode(if1, `if-goto IF_TRUE${labelNo}`);
+                            cg.genCode(if1, `goto IF_FALSE${labelNo}`);
+                            cg.genCode(if1, `label IF_TRUE${labelNo}`);
                             genIfBlockSnippet();
                             if (genElseBlockSnippet) {
-                                cg.genCode("// } if ");
-                                cg.genCode(`goto IF_END${labelNo}`);
-                                cg.genCode(`label IF_FALSE${labelNo}`);
+                                cg.genCode(if1, "// } if ");
+                                cg.genCode(else1!, `goto IF_END${labelNo}`);
+                                cg.genCode(else1!, `label IF_FALSE${labelNo}`);
                                 genElseBlockSnippet();
-                                cg.genCode("// } else ");
-                                cg.genCode(`label IF_END${labelNo}`);
+                                cg.genCode(else1!, "// } else ");
+                                cg.genCode(if1, `label IF_END${labelNo}`);
                             } else {
-                                cg.genCode("// } if");
-                                cg.genCode(`label IF_FALSE${labelNo}`);
+                                cg.genCode(if1, "// } if");
+                                cg.genCode(if1, `label IF_FALSE${labelNo}`);
                             }
                         };
                     },
                     () => {
-                        eat("while");
+                        const while1 = eat("while");
                         eat("\\(");
                         const genExprSnippet = eatExpression();
                         eat("\\)");
@@ -684,29 +683,29 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
 
                         return () => {
                             const labelNo = whileLabelNo++;
-                            cg.genCode(`label WHILE_EXP${labelNo}`);
+                            cg.genCode(while1, `label WHILE_EXP${labelNo}`);
                             genExprSnippet();
-                            cg.genCode("not");
-                            cg.genCode(`if-goto WHILE_END${labelNo}`);
+                            cg.genCode(while1, "not");
+                            cg.genCode(while1, `if-goto WHILE_END${labelNo}`);
                             genBlockSnippet();
-                            cg.genCode("// } while");
-                            cg.genCode(`goto WHILE_EXP${labelNo}`);
-                            cg.genCode(`label WHILE_END${labelNo}`);
+                            cg.genCode(while1, "// } while");
+                            cg.genCode(while1, `goto WHILE_EXP${labelNo}`);
+                            cg.genCode(while1, `label WHILE_END${labelNo}`);
                         };
                     },
                     () => {
-                        eat("do");
+                        const do1 = eat("do");
                         const genSubroutineCallSnippet = eatSubroutineCall();
                         eat(";");
 
                         return () => {
                             genSubroutineCallSnippet();
-                            cg.genCode("pop temp 0");
+                            cg.genCode(do1, "pop temp 0");
                         };
                     },
                     () => {
                         returnFound = true;
-                        eat("return");
+                        const return1 = eat("return");
                         let genExprSnippet: CodeSnippetGen | undefined;
                         eatOne([
                             () => {
@@ -723,9 +722,9 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
                             if (genExprSnippet) {
                                 genExprSnippet();
                             } else {
-                                cg.genCode("push constant 0");
+                                cg.genCode(return1, "push constant 0");
                             }
-                            cg.genCode("return");
+                            cg.genCode(return1, "return");
                         };
                     },
                 ]),
@@ -775,14 +774,14 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
             eat(";");
         });
         loop(() => {
-            const funcType = eat("constructor|method|function").value;
+            const funcType = eat("constructor|method|function");
             // We ignore the return type
             eatIdentifier();
             const funcName = eatIdentifier().value;
             eat("\\(");
 
             const funcArgs: VarDecl[] = [];
-            if (funcType === "method") {
+            if (funcType.value === "method") {
                 funcArgs.push({
                     type: "<this>",
                     identifier: "<this>",
@@ -817,17 +816,17 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
                 eat(";");
             });
 
-            cg.genFuncLike(funcType, funcName, funcArgs, locals);
+            cg.genFuncLike(funcType.value, funcName, funcArgs, locals);
 
-            if (funcType === "method") {
-                cg.genCode("push argument 0");
-                cg.genCode("pop pointer 0");
+            if (funcType.value === "method") {
+                cg.genCode(funcType, "push argument 0");
+                cg.genCode(funcType, "pop pointer 0");
             }
 
-            if (funcType === "constructor") {
-                cg.genCode(`push constant ${cg.getFields().length}`);
-                cg.genCode("call Memory.alloc 1");
-                cg.genCode("pop pointer 0");
+            if (funcType.value === "constructor") {
+                cg.genCode(funcType, `push constant ${cg.getFields().length}`);
+                cg.genCode(funcType, "call Memory.alloc 1");
+                cg.genCode(funcType, "pop pointer 0");
             }
 
             ifLabelNo = 0;
@@ -838,12 +837,12 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
             eatBlock()();
 
             if (!returnFound) {
-                cg.genCode("push constant 0");
-                cg.genCode("return");
+                cg.genCode(emptyBite, "push constant 0");
+                cg.genCode(emptyBite, "return");
             }
 
             eat("\\}");
-            cg.genCode("// } func");
+            cg.genCode(funcType, "// } func");
         });
         eat("\\}");
 
@@ -860,18 +859,23 @@ export type SrcMap = Array<{
     tgt: { start: number; end: number };
 }>;
 
-export type CompileResult = {
+export type CompileResult = Readonly<{
     code: string;
     srcMap: SrcMap;
+}>;
+
+export const emptyCompileResult: CompileResult = {
+    code: "",
+    srcMap: [],
 };
 
-const compile = (srcStr: string): CompileResult => {
+export const compile = (srcStr: string): CompileResult => {
     const src = MakeSrcEater(srcStr);
     let code = "";
     const srcMap: SrcMap = [];
     const codeGen = MakeCodeGen((codeLine) => {
         srcMap.push({
-            src: src.getLastEatPos(),
+            src: { start: codeLine.bite.start, end: codeLine.bite.end },
             tgt: {
                 start: code.length,
                 end: code.length + codeLine.code.length + 1,
@@ -889,5 +893,3 @@ const compile = (srcStr: string): CompileResult => {
 
     return { code, srcMap };
 };
-
-export { compile };

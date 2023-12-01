@@ -1,13 +1,20 @@
-import React, { useCallback } from "react";
+import React from "react";
 import "./Ide.css";
 // import Editor from "./SimpleCodeEditor";
-import Editor, { CursorPos, MonacoEditorInstance } from "./MonacoEditor";
-import { CompileResult, compile } from "./../compilers/jackc2";
+import Editor, { CursorPos } from "./MonacoEditor";
+import {
+    CompileResult,
+    compile,
+    emptyCompileResult,
+} from "./../compilers/jackc2";
+
+/*
 import {
     CompileResult as CompileResult1,
     compile as compile1,
 } from "./../compilers/jackc";
 import { useSyncedScroll } from "./useSyncedScroll";
+*/
 
 const initialCode = `// This file is part of www.nand2tetris.org
 // and the book "The Elements of Computing Systems"
@@ -41,9 +48,7 @@ class Main {
 `;
 
 const Ide: React.FC = () => {
-    // const editor1Ref = React.useRef<MonacoEditorInstance | null>(null);
-    // const editor2Ref = React.useRef<MonacoEditorInstance | null>(null);
-
+    /*
     const [compileResult1, setCompileResult1] = React.useState<CompileResult1>(
         () => ({ code: "", srcMap: [] })
     );
@@ -52,9 +57,10 @@ const Ide: React.FC = () => {
     React.useEffect(() => {
         compileResultRef1.current = compileResult1;
     }, [compileResult1]);
+    */
 
     const [compileResult, setCompileResult] = React.useState<CompileResult>(
-        () => ({ code: "", srcMap: [] })
+        () => emptyCompileResult
     );
     const compileResultRef = React.useRef<CompileResult>();
 
@@ -62,26 +68,28 @@ const Ide: React.FC = () => {
         compileResultRef.current = compileResult;
     }, [compileResult]);
 
+    /*
     const [cursorPos, setCursorPos] = React.useState<CursorPos>(() => ({
         lineNumber: 0,
         column: 0,
         textPos: 0,
     }));
+    */
 
     const [outputDecorate, setOutputDecorate] = React.useState<{
         start: number;
         end: number;
     }>(() => ({ start: 0, end: 0 }));
 
-    const { setEditor1Ref, setEditor2Ref } = useSyncedScroll();
+    // const { setEditor1Ref, setEditor2Ref } = useSyncedScroll();
 
     const onChange = (newCode: string) => {
-        setCompileResult1(compile1(newCode));
+        // setCompileResult1(compile1(newCode));
         setCompileResult(compile(newCode));
     };
 
     const onCursorPositionChange = (newCursorPos: CursorPos) => {
-        setCursorPos(newCursorPos);
+        // setCursorPos(newCursorPos);
         const compileResult = compileResultRef.current;
         if (compileResult) {
             let tgt: { start: number; end: number } | undefined;
@@ -122,17 +130,18 @@ const Ide: React.FC = () => {
                         readOnly
                         value={compileResult.code}
                         decorate={outputDecorate}
-                        onEditorMount={setEditor1Ref}
+                        // onEditorMount={setEditor1Ref}
                     />
                 </div>
+                {/*
                 <div className="output">
                     <Editor
                         readOnly
                         value={compileResult1.code}
-                        decorate={outputDecorate}
                         onEditorMount={setEditor2Ref}
                     />
                 </div>
+                */}
             </div>
             <footer className="footer">Footer</footer>
         </div>

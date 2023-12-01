@@ -1,6 +1,4 @@
-// import jackSrc from "./examples/example_fox";
-// import jackSrc from "./examples/Fox/Main.jack";
-// import vmSrc from "./examples/Fox/Main.vm";
+// Deprecated, use jackc2.ts
 
 const regExpCache: Map<string, RegExp> = new Map();
 
