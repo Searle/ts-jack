@@ -1,6 +1,6 @@
 import React from "react";
 import "./Ide.css";
-import Editor, { CursorPos, Decors } from "./MonacoEditor";
+import Editor, { CursorPos, Decors, Selection } from "./MonacoEditor";
 import {
     CompileResult,
     compile,
@@ -59,13 +59,17 @@ const Ide: React.FC = () => {
         setCompileResult(compile(newCode));
     };
 
-    const makeDecors = (compileResult: CompileResult, srcPos: number) => {
+    const makeDecors = (
+        compileResult: CompileResult,
+        startPos: number,
+        endPos: number
+    ) => {
         const nextSrcDecors: Decors = [];
         const nextOutputDecors: Decors = [];
         for (const res of compileResult.srcMap) {
             if (
                 res.src.some(
-                    (bite) => srcPos >= bite.start && srcPos < bite.end
+                    (bite) => endPos >= bite.start && startPos < bite.end
                 )
             ) {
                 res.src.forEach((bite) => nextSrcDecors.push(bite));
@@ -76,25 +80,43 @@ const Ide: React.FC = () => {
         setOutputDecors(nextOutputDecors);
     };
 
-    const onSrcCursorPositionChange = (newCursorPos: CursorPos) => {
+    const onSrcSelectionChange = (sel: Selection) => {
         const compileResult = compileResultRef.current;
         if (compileResult) {
-            makeDecors(compileResult, newCursorPos.textPos);
+            makeDecors(compileResult, sel.start.textPos, sel.end.textPos);
         }
     };
 
-    const onOutputCursorPositionChange = (newCursorPos: CursorPos) => {
+    const onOutputSelectionChange = (sel: Selection) => {
         const compileResult = compileResultRef.current;
         if (compileResult) {
+            let startPos = -1;
+            let endPos = -1;
             for (const res of compileResult.srcMap) {
                 if (
-                    newCursorPos.textPos >= res.tgt.start &&
-                    newCursorPos.textPos < res.tgt.end
+                    sel.start.textPos <= res.tgt.start &&
+                    sel.end.textPos >= res.tgt.end &&
+                    res.src.length > 0
                 ) {
-                    makeDecors(compileResult, res.src[0].start);
-                    break;
+                    if (startPos < 0) {
+                        startPos = res.src[0].start;
+                        endPos = res.src[0].end;
+                        continue;
+                    }
+                    if (startPos > res.src[0].start) {
+                        startPos = res.src[0].start;
+                    }
+                    if (endPos < res.src[0].end) {
+                        endPos = res.src[0].end;
+                    }
                 }
             }
+            if (startPos >= 0) {
+                makeDecors(compileResult, startPos, endPos);
+                return;
+            }
+            setSrcDecors([]);
+            setOutputDecors([]);
         }
     };
 
@@ -107,7 +129,7 @@ const Ide: React.FC = () => {
                         onValueChange={onChange}
                         initialValue={initialSrc}
                         decors={srcDecors}
-                        onCursorPositionChange={onSrcCursorPositionChange}
+                        onSelectionChange={onSrcSelectionChange}
                     />
                 </div>
                 <div className="output">
@@ -116,7 +138,7 @@ const Ide: React.FC = () => {
                         value={compileResult.code}
                         decors={outputDecors}
                         // onEditorMount={setEditor1Ref}
-                        onCursorPositionChange={onOutputCursorPositionChange}
+                        onSelectionChange={onOutputSelectionChange}
                     />
                 </div>
                 {/*

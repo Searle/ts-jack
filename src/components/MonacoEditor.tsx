@@ -1,7 +1,7 @@
 import React from "react";
 
 import MonacoEditor, { OnMount, Monaco } from "@monaco-editor/react";
-import type { editor } from "monaco-editor";
+import type { editor, Range } from "monaco-editor";
 
 export type MonacoEditorInstance = editor.IStandaloneCodeEditor;
 
@@ -14,6 +14,11 @@ export type CursorPos = {
     textPos: number;
 };
 
+export type Selection = {
+    start: CursorPos;
+    end: CursorPos;
+};
+
 export type Decors = Array<{
     start: number;
     end: number;
@@ -21,7 +26,7 @@ export type Decors = Array<{
 
 interface EditorProps {
     onValueChange?: (code: string) => void;
-    onCursorPositionChange?: (pos: CursorPos) => void;
+    onSelectionChange?: (pos: Selection) => void;
     onEditorMount?: (editor: editor.IStandaloneCodeEditor) => void;
     readOnly?: boolean;
     initialValue?: string;
@@ -31,7 +36,7 @@ interface EditorProps {
 
 const Editor: React.FC<EditorProps> = ({
     onValueChange,
-    onCursorPositionChange,
+    onSelectionChange,
     onEditorMount: onEditorMount_,
     readOnly,
     initialValue,
@@ -76,7 +81,7 @@ const Editor: React.FC<EditorProps> = ({
                     pos2.column
                 ),
                 options: {
-                    className: "myCustomDecoration",
+                    className: "decoration",
                 },
             });
         }
@@ -87,7 +92,7 @@ const Editor: React.FC<EditorProps> = ({
     const onCursorPositionChange_ = (
         event: editor.ICursorPositionChangedEvent
     ) => {
-        if (!onCursorPositionChange) return;
+        if (!onSelectionChange) return;
 
         const editor = editorRef.current;
         if (!editor) return;
@@ -95,11 +100,27 @@ const Editor: React.FC<EditorProps> = ({
         const model = editor.getModel();
         if (!model) return;
 
-        const position = event.position;
-        onCursorPositionChange({
-            ...position,
-            textPos: model.getOffsetAt(position) ?? -1,
-        });
+        const selection = editor.getSelection();
+        if (selection) {
+            onSelectionChange({
+                start: {
+                    column: selection.startColumn,
+                    lineNumber: selection.startLineNumber,
+                    textPos: model.getOffsetAt({
+                        column: selection.startColumn,
+                        lineNumber: selection.startLineNumber,
+                    }),
+                },
+                end: {
+                    column: selection.endColumn,
+                    lineNumber: selection.endLineNumber,
+                    textPos: model.getOffsetAt({
+                        column: selection.endColumn,
+                        lineNumber: selection.endLineNumber,
+                    }),
+                },
+            });
+        }
     };
 
     const initDecoration = () => {

@@ -899,7 +899,7 @@ export const compile = (srcStr: string): CompileResult => {
 
     const codeGen = MakeCodeGen((codeLine) => {
         srcMap.push({
-            src: [codeLine.bite],
+            src: codeLine.bite.id >= 0 ? [codeLine.bite] : [],
             tgt: {
                 start: code.length,
                 end: code.length + codeLine.code.length + 1,
