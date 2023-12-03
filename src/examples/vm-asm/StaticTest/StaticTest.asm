@@ -22,26 +22,26 @@ M=M+1
 @SP
 AM=M-1
 D=M
-@ 24
+@ StaticTest.8
 M=D
 @SP
 AM=M-1
 D=M
-@ 19
+@ StaticTest.3
 M=D
 @SP
 AM=M-1
 D=M
-@ 17
+@ StaticTest.1
 M=D
-@ 19
+@ StaticTest.3
 D=M
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@ 17
+@ StaticTest.1
 D=M
 @SP
 A=M
@@ -57,7 +57,7 @@ M=D-M
 M=-M
 @SP
 M=M+1
-@ 24
+@ StaticTest.8
 D=M
 @SP
 A=M
