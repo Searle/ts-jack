@@ -1,11 +1,11 @@
-@ $_literal
+@ 17
 D=A
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 17
 D=A
 @SP
 A=M
@@ -28,14 +28,14 @@ A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 17
 D=A
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 16
 D=A
 @SP
 A=M
@@ -58,14 +58,14 @@ A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 16
 D=A
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 17
 D=A
 @SP
 A=M
@@ -88,14 +88,14 @@ A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 892
 D=A
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 891
 D=A
 @SP
 A=M
@@ -121,14 +121,14 @@ A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 891
 D=A
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 892
 D=A
 @SP
 A=M
@@ -154,14 +154,14 @@ A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 891
 D=A
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 891
 D=A
 @SP
 A=M
@@ -187,14 +187,14 @@ A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 32767
 D=A
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 32766
 D=A
 @SP
 A=M
@@ -220,14 +220,14 @@ A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 32766
 D=A
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 32767
 D=A
 @SP
 A=M
@@ -253,14 +253,14 @@ A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 32766
 D=A
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 32766
 D=A
 @SP
 A=M
@@ -286,21 +286,21 @@ A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 57
 D=A
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 31
 D=A
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@ $_literal
+@ 53
 D=A
 @SP
 A=M
@@ -315,7 +315,7 @@ AM=M-1
 M=D+M
 @SP
 M=M+1
-@ $_literal
+@ 112
 D=A
 @SP
 A=M
@@ -344,7 +344,7 @@ AM=M-1
 M=D&M
 @SP
 M=M+1
-@ $_literal
+@ 82
 D=A
 @SP
 A=M
