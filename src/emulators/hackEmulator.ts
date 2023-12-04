@@ -11,7 +11,6 @@ export function makeHackEmulator(canvas: HTMLCanvasElement) {
     const ROM: number[] = new Array(32767 + 1); // 0x0000 to 0x8000
     const RAM: number[] = new Array(24576 + 1).fill(0); // 0x0000 to 0x6000
 
-    const KBD = 24576; // Keyboard position in 0x6000
     let PC = 0;
     let DRegister = 0;
     let ARegister = 0;
@@ -103,10 +102,11 @@ export function makeHackEmulator(canvas: HTMLCanvasElement) {
     // Screen
     const SIZE_BITS = 512 * 256;
     const SCREEN_RAM = 16384;
+    const SCREEN_RAM_END = SCREEN_RAM + SIZE_BITS / 16;
 
     const canvasCtx = canvas.getContext("2d", { alpha: false });
     if (canvasCtx === null) {
-        throw "Hack: Can't get canvas context";
+        throw "makeHackEmulator: Can't get canvas context";
     }
 
     const canvasData = canvasCtx.getImageData(
@@ -116,55 +116,35 @@ export function makeHackEmulator(canvas: HTMLCanvasElement) {
         canvas.height
     );
 
-    const getBinVal = (i: number) => i.toString(2).padStart(32, "0");
-
-    // Used for the screen
-    // Screen operates bit patterns
-    // 1 is on 0 is off
-    // TODO: Ohne number -> string -> number
-    function dec2bin(dec: number) {
-        return getBinVal(dec >>> 0).substring(16, 32);
-    }
-
-    // Get X and Y position of the word on the image
-    // According to the position in RAM
-    // RAM[16384 + r*32 + c%16]
-    const getImageRowColumn = function () {
-        const bitNo = (ARegister - SCREEN_RAM) * 16;
-        return { x: bitNo & 511, y: bitNo >> 9 };
-    };
-
     // Draw pixel on canvas
     const drawPixel = function (
         x: number,
         y: number,
         r: number,
         g: number,
-        b: number,
-        a: number
+        b: number
     ) {
         const index = (x + y * canvas.width) * 4;
 
         canvasData.data[index + 0] = r;
         canvasData.data[index + 1] = g;
         canvasData.data[index + 2] = b;
-        canvasData.data[index + 3] = a;
     };
 
     const updateImageData = function (val: number) {
-        // get bin val
-        const { x, y } = getImageRowColumn();
+        const bitNo = (ARegister - SCREEN_RAM) * 16;
+        const x = bitNo & 511;
+        const y = bitNo >> 9;
 
-        const binVal = dec2bin(val);
-        const binAry = binVal.split("");
-
-        binAry.forEach((elem, i) => {
-            if (elem == "1") {
-                drawPixel(x + 16 - i, y, 0, 0, 0, 255);
+        let b = 1;
+        for (let i = 0; i < 16; ++i) {
+            if (val & b) {
+                drawPixel(x + i, y, 0, 0, 0);
             } else {
-                drawPixel(x + 16 - i, y, 255, 255, 255, 255);
+                drawPixel(x + i, y, 255, 255, 255);
             }
-        });
+            b += b;
+        }
     };
 
     const updateCanvas = function () {
@@ -175,7 +155,7 @@ export function makeHackEmulator(canvas: HTMLCanvasElement) {
     // As screen is updated often
     const setRAM = function (val: number) {
         RAM[ARegister] = val;
-        if (ARegister >= SCREEN_RAM && ARegister < KBD) {
+        if (ARegister >= SCREEN_RAM && ARegister < SCREEN_RAM_END) {
             if (screen) {
                 updateImageData(val);
             }
