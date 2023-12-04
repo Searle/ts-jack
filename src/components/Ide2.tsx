@@ -1,43 +1,31 @@
 import React from "react";
 import Editor from "./MonacoEditor";
-import { compile as compileJackToVm } from "./../compilers/jackc2";
+import { compile as compileAsmToHack } from "../compilers/asmc";
 import useDecors from "./useDecors";
 
 import "./Ide.css";
 
 const initialSrc = `// This is a comment
 
-class Main {
-    function void nothing() {
-        // empty
-    }
-
-    function void main(int length) {
-        var Array a; 
-        var int dummy;
-        var int i, sum1, sum2;
-
-        do Output.clear();
-        let dummy = Output.print("Test");
-
-        let a = Array.new(length);
-        let i = 0;
-        let sum1 = 0;
-        let sum2 = 0;
-        while (i < length) {
-            if (i & 1 = 0) {
-                let sum1 = sum1 + a[i];
-            }
-            else {
-                let sum2 = sum2 + a[i];
-            }
-        }
-        return sum1 - sum2;
-    }
-}
+@0
+D=M
+@1
+D=D-M
+@10
+D;JGT
+@1
+D=M
+@12
+0;JMP
+@0
+D=M
+@2
+M=D
+@14
+0;JMP
 `;
 
-const Ide: React.FC = () => {
+const Ide2: React.FC = () => {
     const {
         targetCode: vmCode,
         setTargetCode: setVmCode,
@@ -48,13 +36,13 @@ const Ide: React.FC = () => {
     } = useDecors();
 
     const onChange = (newCode: string) => {
-        const vmCode = compileJackToVm(newCode);
+        const vmCode = compileAsmToHack(newCode);
         setVmCode(vmCode);
     };
 
     return (
         <div className="container">
-            <header className="header">JACK to VM compiler</header>
+            <header className="header">ASM to HACK compiler</header>
             <div className="content">
                 <div className="src">
                     <Editor
@@ -88,4 +76,4 @@ const Ide: React.FC = () => {
     );
 };
 
-export default Ide;
+export default Ide2;

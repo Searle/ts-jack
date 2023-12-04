@@ -28,3 +28,6 @@ dist-ssr
 src/compilers/vmc.dev.txt
 src/hack_original/**/*.js
 src/hack_original/**/*.html
+pong.asmc2.hack
+src/components/pong.asm.ts
+pong.txt.hack

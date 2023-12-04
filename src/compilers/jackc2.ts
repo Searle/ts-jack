@@ -1,3 +1,5 @@
+import { CompileResult, SrcMap } from "./common";
+
 const regExpCache: Map<string, RegExp> = new Map();
 
 const cachedRegExp = (pattern: string) => {
@@ -874,21 +876,6 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
     return {
         parseClass,
     };
-};
-
-export type SrcMap = Array<{
-    src: Bite[];
-    tgt: { start: number; end: number };
-}>;
-
-export type CompileResult = Readonly<{
-    code: string;
-    srcMap: SrcMap;
-}>;
-
-export const emptyCompileResult: CompileResult = {
-    code: "",
-    srcMap: [],
 };
 
 export const compile = (srcStr: string): CompileResult => {
