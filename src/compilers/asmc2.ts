@@ -27,7 +27,7 @@ const systemSymbolTable: Record<string, number> = {
     THAT: 4,
 };
 
-const dest: Record<string, string> = {
+const dest_OLD: Record<string, string> = {
     "0": "000",
     M: "001",
     D: "010",
@@ -38,7 +38,7 @@ const dest: Record<string, string> = {
     AMD: "111",
 };
 
-const jump: Record<string, string> = {
+const jump_OLD: Record<string, string> = {
     "0": "000",
     JGT: "001",
     JEQ: "010",
@@ -49,7 +49,7 @@ const jump: Record<string, string> = {
     JMP: "111",
 };
 
-const comp: Record<string, string> = {
+const comp_OLD: Record<string, string> = {
     "0": "0101010",
     "1": "0111111",
     "-1": "0111010",
@@ -82,22 +82,21 @@ const comp: Record<string, string> = {
 
 // Parse C opcode
 // ixxaccccccdddjjj
-const parseOpcodeC = function (line: string) {
-    const parts: Record<string, string> = {};
+const parseOpcodeC_OLD = function (line: string): string {
     let c, d, j: string;
 
     // Assignment
     const ary1 = line.split("=");
     if (ary1.length > 1) {
-        d = dest[ary1[0]];
-        c = comp[ary1[1]];
+        d = dest_OLD[ary1[0]];
+        c = comp_OLD[ary1[1]];
         j = "000";
     } else {
         const ary2 = line.split(";");
         if (ary2.length > 1) {
-            c = comp[ary2[0]];
+            c = comp_OLD[ary2[0]];
             d = "000"; //dest[ary[0]]
-            j = jump[ary2[1]];
+            j = jump_OLD[ary2[1]];
         }
     }
 
@@ -106,6 +105,35 @@ const parseOpcodeC = function (line: string) {
     }
 
     return `111${c}${d}${j}`;
+};
+
+// Parse C opcode
+// ixxaccccccdddjjj
+const parseOpcodeC = function (line: string): number {
+    let c: number | undefined;
+    let d: number | undefined;
+    let j: number | undefined;
+
+    // Assignment
+    const ary1 = line.split("=");
+    if (ary1.length > 1) {
+        c = comp[ary1[1]];
+        d = dest[ary1[0]];
+        j = 0;
+    } else {
+        const ary2 = line.split(";");
+        if (ary2.length > 1) {
+            c = comp[ary2[0]];
+            d = 0;
+            j = jump[ary2[1]];
+        }
+    }
+
+    if (c === undefined || d === undefined || j === undefined) {
+        throw `asmc: Syntax error: ${line}`;
+    }
+
+    return 0b1110000000000000 | c | d | j;
 };
 
 const getBinVal = (i: number) => i.toString(2).padStart(16, "0");
@@ -150,21 +178,77 @@ export const compile = function (str: string) {
         }
     }
 
-    const instructions: string[] = [];
+    const instructions: number[] = [];
     for (const line of lines) {
         if (line.startsWith("@")) {
             const label = line.substring(1);
             if (label in symbolTable) {
-                instructions.push(getBinVal(symbolTable[label]));
+                instructions.push(symbolTable[label]);
             } else if (label in systemSymbolTable) {
-                instructions.push(getBinVal(systemSymbolTable[label]));
+                instructions.push(systemSymbolTable[label]);
             } else {
-                instructions.push(getBinVal(parseInt(label)));
+                instructions.push(parseInt(label));
             }
         } else {
+            if (getBinVal(parseOpcodeC(line)) !== parseOpcodeC_OLD(line)) {
+                throw "NOOOO";
+            }
             instructions.push(parseOpcodeC(line));
         }
     }
 
-    return instructions.join("\n");
+    return instructions.map(getBinVal).join("\n");
+};
+
+const dest: Record<string, number> = {
+    "0": 0b000000,
+    M: 0b001000,
+    D: 0b010000,
+    MD: 0b011000,
+    A: 0b100000,
+    AM: 0b101000,
+    AD: 0b110000,
+    AMD: 0b111000,
+};
+
+const jump: Record<string, number> = {
+    "0": 0b000,
+    JGT: 0b001,
+    JEQ: 0b010,
+    JGE: 0b011,
+    JLT: 0b100,
+    JNE: 0b101,
+    JLE: 0b110,
+    JMP: 0b111,
+};
+
+const comp: Record<string, number> = {
+    "0": 0b0101010000000,
+    "1": 0b0111111000000,
+    "-1": 0b0111010000000,
+    D: 0b0001100000000,
+    A: 0b0110000000000,
+    "!D": 0b0001101000000,
+    "!A": 0b0110001000000,
+    "-D": 0b0001111000000,
+    "-A": 0b0110011000000,
+    "D+1": 0b0011111000000,
+    "A+1": 0b0110111000000,
+    "D-1": 0b0001110000000,
+    "A-1": 0b0110010000000,
+    "D+A": 0b0000010000000,
+    "D-A": 0b0010011000000,
+    "A-D": 0b0000111000000,
+    "D&A": 0b0000000000000,
+    "D|A": 0b0010101000000,
+    M: 0b1110000000000,
+    "!M": 0b1110001000000,
+    "-M": 0b1110011000000,
+    "M+1": 0b1110111000000,
+    "M-1": 0b1110010000000,
+    "D+M": 0b1000010000000,
+    "D-M": 0b1010011000000,
+    "M-D": 0b1000111000000,
+    "D&M": 0b1000000000000,
+    "D|M": 0b1010101000000,
 };
