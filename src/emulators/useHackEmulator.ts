@@ -36,21 +36,20 @@ const keys: Record<number, number> = {
 export const useHackEmulator = (canvas: HTMLCanvasElement | null) => {
     const [emu, setEmu] = React.useState<HackEmulator | null>(null);
 
-    const [delay, setDelay] = React.useState(200);
+    const [delay, setDelay] = React.useState(2);
     const [running, setRunning] = React.useState(false);
 
     React.useEffect(() => {
         if (canvas) setEmu(makeHackEmulator(canvas));
     }, [canvas]);
 
-    const cyclesPerTick = 100000;
+    const cyclesPerTick = 10000;
 
     React.useEffect(() => {
         if (!running || !emu) return;
 
         const intervalId = window.setInterval(() => {
             for (let i = 0; i < cyclesPerTick; i++) {
-                // console.log("cycle");
                 emu.cycle();
 
                 if (emu.cyclesDone % 100000 == 0) {
@@ -91,7 +90,7 @@ export const useHackEmulator = (canvas: HTMLCanvasElement | null) => {
         };
     }, [emu, running, delay]);
 
-    const setCode = (hackCode: string) => {
+    const setCode = (hackCode: number[]) => {
         if (!emu) {
             throw "setCode: emu not ready";
         }

@@ -1,30 +1,31 @@
 // Derived from https://github.com/diversen/hack-assembler-js/blob/master/index.js
 // MIT © Dennis Iversen
 
+// prettier-ignore
 const systemSymbolTable: Record<string, number> = {
-    R0: 0,
-    R1: 1,
-    R2: 2,
-    R3: 3,
-    R4: 4,
-    R5: 5,
-    R6: 6,
-    R7: 7,
-    R8: 8,
-    R9: 9,
-    R10: 10,
-    R11: 11,
-    R12: 12,
-    R13: 13,
-    R14: 14,
-    R15: 15,
-    SCREEN: 16384,
-    KBD: 24576,
-    SP: 0,
-    LCL: 1,
-    ARG: 2,
-    THIS: 3,
-    THAT: 4,
+    "R0":     0,
+    "R1":     1,
+    "R2":     2,
+    "R3":     3,
+    "R4":     4,
+    "R5":     5,
+    "R6":     6,
+    "R7":     7,
+    "R8":     8,
+    "R9":     9,
+    "R10":    10,
+    "R11":    11,
+    "R12":    12,
+    "R13":    13,
+    "R14":    14,
+    "R15":    15,
+    "SCREEN": 16384,
+    "KBD":    24576,
+    "SP":     0,
+    "LCL":    1,
+    "ARG":    2,
+    "THIS":   3,
+    "THAT":   4,
 };
 
 const dest_OLD: Record<string, string> = {
@@ -97,6 +98,8 @@ const parseOpcodeC_OLD = function (line: string): string {
             c = comp_OLD[ary2[0]];
             d = "000"; //dest[ary[0]]
             j = jump_OLD[ary2[1]];
+        } else {
+            throw `asmc: Syntax error: ${line}`;
         }
     }
 
@@ -136,9 +139,7 @@ const parseOpcodeC = function (line: string): number {
     return 0b1110000000000000 | c | d | j;
 };
 
-const getBinVal = (i: number) => i.toString(2).padStart(16, "0");
-
-export const compile = function (str: string) {
+export const compileToBin = function (str: string): number[] {
     // Split code array
     let lines = str
         .replace(/\s*\/\/.*?$/gm, "")
@@ -190,65 +191,73 @@ export const compile = function (str: string) {
                 instructions.push(parseInt(label));
             }
         } else {
-            if (getBinVal(parseOpcodeC(line)) !== parseOpcodeC_OLD(line)) {
+            if (toBinStr(parseOpcodeC(line)) !== parseOpcodeC_OLD(line)) {
                 throw "NOOOO";
             }
             instructions.push(parseOpcodeC(line));
         }
     }
 
-    return instructions.map(getBinVal).join("\n");
+    return instructions;
 };
 
+const toBinStr = (i: number) => i.toString(2).padStart(16, "0");
+
+export const compile = (input: string): string =>
+    compileToBin(input).map(toBinStr).join("\n");
+
+// prettier-ignore
 const dest: Record<string, number> = {
-    "0": 0b000000,
-    M: 0b001000,
-    D: 0b010000,
-    MD: 0b011000,
-    A: 0b100000,
-    AM: 0b101000,
-    AD: 0b110000,
-    AMD: 0b111000,
+    "0":   0b000_000,
+    "M":   0b001_000,
+    "D":   0b010_000,
+    "MD":  0b011_000,
+    "A":   0b100_000,
+    "AM":  0b101_000,
+    "AD":  0b110_000,
+    "AMD": 0b111_000,
 };
 
+// prettier-ignore
 const jump: Record<string, number> = {
-    "0": 0b000,
-    JGT: 0b001,
-    JEQ: 0b010,
-    JGE: 0b011,
-    JLT: 0b100,
-    JNE: 0b101,
-    JLE: 0b110,
-    JMP: 0b111,
+    "0":   0b000,
+    "JGT": 0b001,
+    "JEQ": 0b010,
+    "JGE": 0b011,
+    "JLT": 0b100,
+    "JNE": 0b101,
+    "JLE": 0b110,
+    "JMP": 0b111,
 };
 
+// prettier-ignore
 const comp: Record<string, number> = {
-    "0": 0b0101010000000,
-    "1": 0b0111111000000,
-    "-1": 0b0111010000000,
-    D: 0b0001100000000,
-    A: 0b0110000000000,
-    "!D": 0b0001101000000,
-    "!A": 0b0110001000000,
-    "-D": 0b0001111000000,
-    "-A": 0b0110011000000,
-    "D+1": 0b0011111000000,
-    "A+1": 0b0110111000000,
-    "D-1": 0b0001110000000,
-    "A-1": 0b0110010000000,
-    "D+A": 0b0000010000000,
-    "D-A": 0b0010011000000,
-    "A-D": 0b0000111000000,
-    "D&A": 0b0000000000000,
-    "D|A": 0b0010101000000,
-    M: 0b1110000000000,
-    "!M": 0b1110001000000,
-    "-M": 0b1110011000000,
-    "M+1": 0b1110111000000,
-    "M-1": 0b1110010000000,
-    "D+M": 0b1000010000000,
-    "D-M": 0b1010011000000,
-    "M-D": 0b1000111000000,
-    "D&M": 0b1000000000000,
-    "D|M": 0b1010101000000,
+    "0":   0b0101010_000000,
+    "1":   0b0111111_000000,
+    "-1":  0b0111010_000000,
+    "D":   0b0001100_000000,
+    "A":   0b0110000_000000,
+    "!D":  0b0001101_000000,
+    "!A":  0b0110001_000000,
+    "-D":  0b0001111_000000,
+    "-A":  0b0110011_000000,
+    "D+1": 0b0011111_000000,
+    "A+1": 0b0110111_000000,
+    "D-1": 0b0001110_000000,
+    "A-1": 0b0110010_000000,
+    "D+A": 0b0000010_000000,
+    "D-A": 0b0010011_000000,
+    "A-D": 0b0000111_000000,
+    "D&A": 0b0000000_000000,
+    "D|A": 0b0010101_000000,
+    "M":   0b1110000_000000,
+    "!M":  0b1110001_000000,
+    "-M":  0b1110011_000000,
+    "M+1": 0b1110111_000000,
+    "M-1": 0b1110010_000000,
+    "D+M": 0b1000010_000000,
+    "D-M": 0b1010011_000000,
+    "M-D": 0b1000111_000000,
+    "D&M": 0b1000000_000000,
+    "D|M": 0b1010101_000000,
 };

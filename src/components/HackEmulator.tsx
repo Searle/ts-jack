@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useHackEmulator } from "../emulators/useHackEmulator";
-import { compile } from "../compilers/asmc2";
+import { compile, compileToBin } from "../compilers/asmc2";
 import pongAsm from "./pong.asm";
 
 const HackEmulator: React.FC = () => {
@@ -49,7 +49,7 @@ M=M+1 // i=i+1
 (END)
 @END
 0;JMP // infinite loop`);
-            const code1 = compile(pongAsm);
+            const code1 = compileToBin(pongAsm);
             setCode(code1);
             setRunning(true);
         }
