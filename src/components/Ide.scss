@@ -1,0 +1,35 @@
+.Ide {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+
+    .header,
+    .footer {
+        background-color: #f0f0f0;
+        padding: 10px;
+        text-align: center;
+    }
+
+    .content {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+    }
+
+    .src {
+        flex: 2;
+        overflow: auto;
+        border: 2px solid #ccc;
+    }
+
+    .output {
+        flex: 1;
+        overflow: auto;
+        border: 2px solid #ccc;
+    }
+
+    .output2 {
+        flex: 1;
+    }
+}

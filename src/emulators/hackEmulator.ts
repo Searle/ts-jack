@@ -7,9 +7,20 @@
  * CPU, RAM, ROM, Screen, Keyboard
  */
 
-export function makeHackEmulator(canvas: HTMLCanvasElement) {
-    const ROM: number[] = new Array(32767 + 1); // 0x0000 to 0x8000
-    const RAM: number[] = new Array(24576 + 1).fill(0); // 0x0000 to 0x6000
+interface MakeHackEmulatorProps {
+    canvas?: HTMLCanvasElement;
+    onTerminalWrite?: (word: number) => void;
+}
+
+export function makeHackEmulator({
+    canvas,
+    onTerminalWrite,
+}: MakeHackEmulatorProps) {
+    const ROM: number[] = new Array(32768); // 0x0000 to 0x8000
+    const RAM: number[] = new Array(24578).fill(0); // 0x0000 to 0x6000
+
+    // const KEYBOARD = 24576;
+    const TERMINAL_WRITE = 24577; // Extension for writing a Char to the Terminal
 
     let PC = 0;
     let DRegister = 0;
@@ -104,61 +115,72 @@ export function makeHackEmulator(canvas: HTMLCanvasElement) {
     const SCREEN_RAM = 16384;
     const SCREEN_RAM_END = SCREEN_RAM + SIZE_BITS / 16;
 
-    const canvasCtx = canvas.getContext("2d", { alpha: false });
-    if (canvasCtx === null) {
-        throw "makeHackEmulator: Can't get canvas context";
-    }
+    const setupCanvas = () => {
+        if (!canvas) {
+            console.log("makeHackEmulator: no canvas");
 
-    const canvasData = canvasCtx.getImageData(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-    // Draw pixel on canvas
-    const drawPixel = function (
-        x: number,
-        y: number,
-        r: number,
-        g: number,
-        b: number
-    ) {
-        const index = (x + y * canvas.width) * 4;
-
-        canvasData.data[index + 0] = r;
-        canvasData.data[index + 1] = g;
-        canvasData.data[index + 2] = b;
-    };
-
-    const updateImageData = function (val: number) {
-        const bitNo = (ARegister - SCREEN_RAM) * 16;
-        const x = bitNo & 511;
-        const y = bitNo >> 9;
-
-        let b = 1;
-        for (let i = 0; i < 16; ++i) {
-            if (val & b) {
-                drawPixel(x + i, y, 0, 0, 0);
-            } else {
-                drawPixel(x + i, y, 255, 255, 255);
-            }
-            b += b;
+            return {
+                updateCanvas: () => {},
+                updateImageData: () => {},
+            };
         }
+
+        const canvasCtx = canvas.getContext("2d", { alpha: false });
+        if (canvasCtx === null) {
+            throw "makeHackEmulator: Can't get canvas context";
+        }
+
+        const canvasData = canvasCtx.getImageData(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+        const drawPixel = function (x: number, y: number, rgb: number) {
+            const index = (x + y * canvas.width) * 4;
+
+            canvasData.data[index + 0] = rgb;
+            canvasData.data[index + 1] = rgb;
+            canvasData.data[index + 2] = rgb;
+        };
+
+        const updateImageData = function (val: number) {
+            const bitNo = (ARegister - SCREEN_RAM) * 16;
+            const x = bitNo & 511;
+            const y = bitNo >> 9;
+
+            let b = 1;
+            for (let i = 0; i < 16; ++i) {
+                if (val & b) {
+                    drawPixel(x + i, y, 0);
+                } else {
+                    drawPixel(x + i, y, 255);
+                }
+                b += b;
+            }
+        };
+
+        const updateCanvas = function () {
+            canvasCtx.putImageData(canvasData, 0, 0);
+        };
+
+        return { updateImageData, updateCanvas };
     };
 
-    const updateCanvas = function () {
-        canvasCtx.putImageData(canvasData, 0, 0);
-    };
+    const { updateImageData, updateCanvas } = setupCanvas();
 
     // Set screen RAM for fast access
     // As screen is updated often
     const setRAM = function (val: number) {
         RAM[ARegister] = val;
-        if (ARegister >= SCREEN_RAM && ARegister < SCREEN_RAM_END) {
+        if (canvas && ARegister >= SCREEN_RAM && ARegister < SCREEN_RAM_END) {
             if (screen) {
                 updateImageData(val);
             }
+        }
+        if (onTerminalWrite && ARegister == TERMINAL_WRITE) {
+            onTerminalWrite(RAM[TERMINAL_WRITE]);
         }
     };
 

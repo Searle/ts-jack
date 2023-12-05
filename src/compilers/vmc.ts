@@ -1,3 +1,4 @@
+import { CompileResult } from "./common.ts";
 import snippetsStr from "./vmc-snippets.ts";
 
 const snippets: Record<string, string> = {};
@@ -27,13 +28,13 @@ const directSegments: Record<string, number> = {
     pointer: 3,
 } as const;
 
-const compile = (baseName: string, input: string): string => {
-    let result = "";
+export const compile = (baseName: string, input: string): CompileResult => {
+    let code = "";
 
     type GenCode = (asmLine: string) => void;
 
     const genCode: GenCode = (asmLine) => {
-        result += asmLine + "\n";
+        code += asmLine + "\n";
     };
 
     let returnAddress = -1;
@@ -89,7 +90,9 @@ const compile = (baseName: string, input: string): string => {
             if (asmLine.includes("%")) {
                 throw `Unresolved %: ${snippet}/${asmLine}`;
             }
-            genCode(asmLine + " // **" + al1);
+
+            // genCode(asmLine + " // **" + al1);
+            genCode(asmLine);
         });
     };
 
@@ -214,11 +217,12 @@ const compile = (baseName: string, input: string): string => {
         throw "??" + vmLine;
     };
 
-    for (const [lineIndex, line] of input.split("\n").entries()) {
+    for (const [lineIndex, line] of input.split(/\r?\n/).entries()) {
         processLine(lineIndex, line);
     }
 
-    return result;
+    return {
+        code,
+        srcMap: [], // TODO
+    };
 };
-
-export default compile;

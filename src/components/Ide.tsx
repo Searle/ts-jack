@@ -1,9 +1,11 @@
 import React from "react";
 import Editor from "./MonacoEditor";
 import { compile as compileJackToVm } from "./../compilers/jackc2";
+import { compile as compileVmToAsm } from "../compilers/vmc";
 import useDecors from "./useDecors";
 
-import "./Ide.css";
+import "./Ide.scss";
+import SimpleRunner from "./SimpleRunner";
 
 const initialSrc = `// This is a comment
 
@@ -47,13 +49,17 @@ const Ide: React.FC = () => {
         onOutputSelectionChange,
     } = useDecors();
 
+    const { targetCode: asmCode, setTargetCode: setAsmCode } = useDecors();
+
     const onChange = (newCode: string) => {
         const vmCode = compileJackToVm(newCode);
         setVmCode(vmCode);
+        const asmCode = compileVmToAsm("Test", vmCode.code);
+        setAsmCode(asmCode);
     };
 
     return (
-        <div className="container">
+        <div className="Ide">
             <header className="header">JACK to VM compiler</header>
             <div className="content">
                 <div className="src">
@@ -73,15 +79,14 @@ const Ide: React.FC = () => {
                         onSelectionChange={onOutputSelectionChange}
                     />
                 </div>
-                {/*
-                <div className="output">
+                <div className="output2">
+                    <SimpleRunner asmCode={asmCode.code} />
                     <Editor
                         readOnly
-                        value={compileResult1.code}
-                        onEditorMount={setEditor2Ref}
+                        value={asmCode.code}
+                        // onEditorMount={setEditor2Ref}
                     />
                 </div>
-                */}
             </div>
             <footer className="footer">Footer</footer>
         </div>

@@ -3,7 +3,7 @@ import Editor from "./MonacoEditor";
 import { compile as compileAsmToHack } from "../compilers/asmc";
 import useDecors from "./useDecors";
 
-import "./Ide.css";
+import "./Ide.scss";
 
 const initialSrc = `// This is a comment
 
@@ -41,7 +41,7 @@ const Ide2: React.FC = () => {
     };
 
     return (
-        <div className="container">
+        <div className="Ide">
             <header className="header">ASM to HACK compiler</header>
             <div className="content">
                 <div className="src">

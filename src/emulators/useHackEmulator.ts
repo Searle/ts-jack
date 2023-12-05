@@ -33,17 +33,24 @@ const keys: Record<number, number> = {
     123: 152,
 };
 
-export const useHackEmulator = (canvas: HTMLCanvasElement | null) => {
+export const useHackEmulator = (
+    canvas?: HTMLCanvasElement | null,
+    onTerminalWrite?: (word: number) => void
+) => {
     const [emu, setEmu] = React.useState<HackEmulator | null>(null);
 
     const [delay, setDelay] = React.useState(2);
     const [running, setRunning] = React.useState(false);
 
     React.useEffect(() => {
-        if (canvas) setEmu(makeHackEmulator(canvas));
-    }, [canvas]);
+        console.log("HU", canvas, onTerminalWrite);
+        if (canvas !== null)
+            setEmu(makeHackEmulator({ canvas, onTerminalWrite }));
+    }, [canvas, onTerminalWrite]);
 
     const cyclesPerTick = 10000;
+
+    console.log("RUNNING", running);
 
     React.useEffect(() => {
         if (!running || !emu) return;

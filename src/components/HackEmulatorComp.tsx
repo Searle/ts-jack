@@ -3,7 +3,7 @@ import { useHackEmulator } from "../emulators/useHackEmulator";
 import { compile, compileToBin } from "../compilers/asmc2";
 import pongAsm from "./pong.asm";
 
-const HackEmulator: React.FC = () => {
+export const HackEmulatorComp: React.FC = () => {
     const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
     const [, setIsCanvasReady] = useState(false);
 
@@ -55,13 +55,6 @@ M=M+1 // i=i+1
         }
     }, [emuReady]);
 
-    const [cycleInterval, setCycleInterval] = useState<NodeJS.Timeout | null>(
-        null
-    );
-    const [setupCycles, setSetupCycles] = useState(5000000);
-    const [cyclesPerFrame, setCyclesPerFrame] = useState(35000);
-    const [fps, setFps] = useState(60);
-
     // const [running, setRunning]= useState(false);
     const [program, setProgram] = useState("");
 
@@ -76,5 +69,3 @@ M=M+1 // i=i+1
         </div>
     );
 };
-
-export default HackEmulator;
