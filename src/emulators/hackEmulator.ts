@@ -130,6 +130,11 @@ export function makeHackEmulator({
             throw "makeHackEmulator: Can't get canvas context";
         }
 
+        canvasCtx.fillStyle = "white";
+        canvasCtx.clearRect(0, 0, 512, 256);
+        canvasCtx.fillRect(0, 0, 512, 256);
+        canvasCtx.fillStyle = "black";
+
         const canvasData = canvasCtx.getImageData(
             0,
             0,
@@ -246,7 +251,18 @@ export function makeHackEmulator({
         const jump1 = getJump(ins);
         let jumped = false;
 
-        ALUOut = comp[comp1]();
+        if (!(comp1 in comp)) {
+            if (false) {
+                console.warn(
+                    "hackEmulator: illegal opcode at ",
+                    PC,
+                    ":",
+                    comp1.toString(2)
+                );
+            }
+        } else {
+            ALUOut = comp[comp1]();
+        }
 
         if (dest1 !== 0) {
             dest[dest1](ALUOut);

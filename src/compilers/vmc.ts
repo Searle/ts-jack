@@ -15,6 +15,13 @@ const setupSnippets = () => {
 
 setupSnippets();
 
+class VmcError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "VmcError";
+    }
+}
+
 const indirectSegments: Record<string, number> = {
     local: 1,
     argument: 2,
@@ -128,7 +135,7 @@ export const compile = (baseName: string, input: string): CompileResult => {
             command === "if-goto"
         ) {
             return processSnippet(command, {
-                label: `${baseName}.${nextToken()}`,
+                label: `${baseName}_${nextToken()}`,
             });
         }
 
@@ -147,7 +154,7 @@ export const compile = (baseName: string, input: string): CompileResult => {
                     genCode("@R13");
                     genCode("M=D");
                 },
-                return_address: baseName + ".Return." + returnAddress,
+                return_address: baseName + "_Return_" + returnAddress,
                 function_name: fName,
             });
         }
@@ -179,7 +186,7 @@ export const compile = (baseName: string, input: string): CompileResult => {
             if (segment in directSegments) {
                 const address =
                     segment === "static"
-                        ? `${baseName}.${index}`
+                        ? `${baseName}_${index}`
                         : (
                               directSegments[segment] + parseInt(index)
                           ).toString();
@@ -207,14 +214,14 @@ export const compile = (baseName: string, input: string): CompileResult => {
             }
             // TODO
             console.log("PUSH/POP", command, segment, index);
-            throw command + " ??" + vmLine;
+            throw new VmcError("Internal error: " + command + " ??" + vmLine);
         }
 
         if (command in snippets) {
             return processSnippet(command);
         }
 
-        throw "??" + vmLine;
+        throw new VmcError("Unknown command: " + vmLine);
     };
 
     for (const [lineIndex, line] of input.split(/\r?\n/).entries()) {

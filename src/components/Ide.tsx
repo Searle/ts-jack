@@ -4,23 +4,23 @@ import { compile as compileJackToVm } from "./../compilers/jackc2";
 import { compile as compileVmToAsm } from "../compilers/vmc";
 import useDecors from "./useDecors";
 
-import "./Ide.scss";
+import classes from "./Ide.module.pcss";
 import SimpleRunner from "./SimpleRunner";
+import { os } from "../emulators/OS";
+import { HackEmulatorComp } from "./HackEmulatorComp";
 
-const initialSrc = `// This is a comment
-
-class Main {
+const initialSrc = `class Main {
     function void nothing() {
         // empty
     }
 
     function void main(int length) {
+        do Screen.clearScreen();
+        do Output.print("HALLO WELT");
+/*
         var Array a; 
         var int dummy;
         var int i, sum1, sum2;
-
-        do Output.clear();
-        let dummy = Output.print("Test");
 
         let a = Array.new(length);
         let i = 0;
@@ -35,6 +35,7 @@ class Main {
             }
         }
         return sum1 - sum2;
+*/
     }
 }
 `;
@@ -52,17 +53,25 @@ const Ide: React.FC = () => {
     const { targetCode: asmCode, setTargetCode: setAsmCode } = useDecors();
 
     const onChange = (newCode: string) => {
-        const vmCode = compileJackToVm(newCode);
+        const initJackXX = `\n\nclass Sys {
+            function void init() {
+                do Main.main();
+            }
+        }\n`;
+        const initJack = os();
+        const vmCode = compileJackToVm(newCode + initJack);
         setVmCode(vmCode);
-        const asmCode = compileVmToAsm("Test", vmCode.code);
+        const initCode =
+            "sys-init\ncall Sys.init 0\nlabel __EOF__\ngoto __EOF__\n";
+        const asmCode = compileVmToAsm("Test", initCode + vmCode.code);
         setAsmCode(asmCode);
     };
 
     return (
-        <div className="Ide">
-            <header className="header">JACK to VM compiler</header>
-            <div className="content">
-                <div className="src">
+        <div className={classes.Ide}>
+            <header className={classes.header}>JACK to VM compiler</header>
+            <div className={classes.content}>
+                <div className={classes.jack}>
                     <Editor
                         onValueChange={onChange}
                         initialValue={initialSrc}
@@ -70,7 +79,7 @@ const Ide: React.FC = () => {
                         onSelectionChange={onSrcSelectionChange}
                     />
                 </div>
-                <div className="output">
+                <div className={classes.output}>
                     <Editor
                         readOnly
                         value={vmCode.code}
@@ -79,7 +88,8 @@ const Ide: React.FC = () => {
                         onSelectionChange={onOutputSelectionChange}
                     />
                 </div>
-                <div className="output2">
+                <div className={classes.output2}>
+                    <HackEmulatorComp asmCode={asmCode.code} />
                     <SimpleRunner asmCode={asmCode.code} />
                     <Editor
                         readOnly
@@ -88,7 +98,7 @@ const Ide: React.FC = () => {
                     />
                 </div>
             </div>
-            <footer className="footer">Footer</footer>
+            <footer className={classes.footer}>Footer</footer>
         </div>
     );
 };

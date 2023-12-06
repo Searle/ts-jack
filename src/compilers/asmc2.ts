@@ -1,6 +1,13 @@
 // Derived from https://github.com/diversen/hack-assembler-js/blob/master/index.js
 // MIT © Dennis Iversen
 
+class AsmcError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "AsmcError";
+    }
+}
+
 // prettier-ignore
 const systemSymbolTable: Record<string, number> = {
     "R0":     0,
@@ -142,11 +149,15 @@ export const compileToBin = function (str: string): number[] {
 
     // Memory start after last register
     let currentM = 16;
+    const missingSymbols: Record<string, number> = {};
     const symbolTable: Record<string, number> = {};
-    for (const line of lines) {
+    for (const [index, line] of lines.entries()) {
         const match = line.match(/^@(\D\S*)$/);
         if (match) {
             const label = match[1];
+            if (/[.]/.test(label)) {
+                missingSymbols[label] = index;
+            }
             if (!(label in systemSymbolTable) && !(label in symbolTable)) {
                 symbolTable[label] = currentM++;
             }
@@ -159,15 +170,34 @@ export const compileToBin = function (str: string): number[] {
             const label = line.substring(1);
             if (label in symbolTable) {
                 instructions.push(symbolTable[label]);
-            } else if (label in systemSymbolTable) {
-                instructions.push(systemSymbolTable[label]);
-            } else {
-                instructions.push(parseInt(label));
+                // delete symbolTable[label];
+                continue;
             }
-        } else {
-            instructions.push(parseOpcodeC(line));
+            if (label in systemSymbolTable) {
+                instructions.push(systemSymbolTable[label]);
+                continue;
+            }
+            instructions.push(parseInt(label));
+            continue;
         }
+        instructions.push(parseOpcodeC(line));
     }
+
+    if (Object.keys(missingSymbols).length) {
+        throw new AsmcError(
+            "Missing symbols:\n" +
+                Object.entries(missingSymbols)
+                    .map(([key, value]) => `${key} (line ${value})`)
+                    .join("\n")
+        );
+    }
+
+    console.log(
+        lines
+            .slice(0, 100)
+            .map((v, i) => `${i} ${v}`)
+            .join("\n")
+    );
 
     return instructions;
 };

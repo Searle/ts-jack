@@ -3,7 +3,7 @@ import * as path from "path";
 import { fileURLToPath } from "url";
 import { describe, expect, it } from "vitest";
 
-import compile from "./vmc.ts";
+import { compile } from "./vmc.ts";
 import { displayDiffSideBySide } from "./diffUtils.ts";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -33,7 +33,7 @@ const runTest = (path: string, className = path) => {
     // const asmCode1 = "a \nb \nc \nd \ne \ne1 \ne2 \ne3 \nf \ng ";
     // const compiled1 = "a \nb1 \nb2 \nc \nd \ne // test\nf \ng ";
 
-    displayDiffSideBySide(asmCode, compiled, 6, 2);
+    displayDiffSideBySide(asmCode, compiled.code, 6, 2);
 };
 
 describe("simple test", () => {

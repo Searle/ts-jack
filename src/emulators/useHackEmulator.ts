@@ -53,6 +53,7 @@ export const useHackEmulator = (
     console.log("RUNNING", running);
 
     React.useEffect(() => {
+        console.log("USEEFFECT");
         if (!running || !emu) return;
 
         const intervalId = window.setInterval(() => {
@@ -90,6 +91,7 @@ export const useHackEmulator = (
         window.addEventListener("keyup", onKeyUp);
 
         return () => {
+            console.log("TEAR DOWN");
             clearInterval(intervalId);
             cancelAnimationFrame(animationFrameId);
             window.removeEventListener("keydown", onKeyDown, true);

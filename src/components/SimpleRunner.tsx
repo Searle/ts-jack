@@ -10,8 +10,6 @@ interface SimpleRunnerProps {
 }
 
 const SimpleRunner: React.FC<SimpleRunnerProps> = ({ asmCode }) => {
-    const [emu, setEmu] = React.useState<HackEmulator | null>(null);
-
     const onTerminalWrite = React.useCallback((word: number) => {
         console.log("Terminal Write:", word);
         // TODO
@@ -19,16 +17,19 @@ const SimpleRunner: React.FC<SimpleRunnerProps> = ({ asmCode }) => {
 
     const { setCode, setRunning } = useHackEmulator(undefined, onTerminalWrite);
 
-    const onRunClick = () => {
-        // TODO
+    const onStartClick = () => {
         setCode(compileToBin(asmCode));
         setRunning(true);
-        // TODO: make stoppable
+    };
+
+    const onStopClick = () => {
+        setRunning(false);
     };
 
     return (
         <div className={classes.SimpleRunner}>
-            <button onClick={onRunClick}>Run !</button>
+            <button onClick={onStartClick}>Start</button>
+            <button onClick={onStopClick}>Stop</button>
             <div className={classes.output}>Output</div>
         </div>
     );

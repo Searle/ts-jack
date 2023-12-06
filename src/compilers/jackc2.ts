@@ -35,6 +35,8 @@ const emptyBite: Bite = {
     end: -1,
 };
 
+type CodeSnippetGen = () => void;
+
 const MakeSrcEater = (jackSrc: string) => {
     let pos = 0;
     let nextBiteId = 0;
@@ -180,6 +182,7 @@ const MakeSrcEater = (jackSrc: string) => {
         loop,
         checkEof,
         getLineSrc,
+        error,
     };
 };
 
@@ -356,14 +359,12 @@ const MakeCodeGen = (
 
 type CodeGen = ReturnType<typeof MakeCodeGen>;
 
-const identifierPattern =
-    "(?!false\\b|true\\b|null\\b|this\\b)[a-zA-Z_][a-zA-Z0-9_]*";
-
-type CodeSnippetGen = () => void;
-
 const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
-    const { eat, eatOne, loop, checkEof } = srcEater;
+    const { eat, eatOne, loop, checkEof, error } = srcEater;
     const { genCode, addBiteRef, findVarCode, getClassName, findVar } = cg;
+
+    const identifierPattern =
+        "(?!false\\b|true\\b|null\\b|this\\b)[a-zA-Z_][a-zA-Z0-9_]*";
 
     const eatIdentifier = () => eat(identifierPattern);
 
@@ -469,7 +470,10 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
     };
 
     const eatIntegerConstant = (): CodeSnippetGen => {
-        const value = eat("[12]?\\d{1,4}|3[01]\\d{3}|32[0-7]\\d{2}");
+        const value = eat("\\d+");
+        if (parseInt(value.value) > 32767) {
+            error("Numbers must be <= 32767");
+        }
         return () => {
             genCode(value, `push constant ${value.value}`);
         };
@@ -869,12 +873,16 @@ const MakeParser = (srcEater: SrcEater, cg: CodeGen) => {
             genCode(funcType, "// } func");
         });
         eat("\\}");
+    };
+
+    const parse = () => {
+        loop(parseClass);
 
         checkEof();
     };
 
     return {
-        parseClass,
+        parse,
     };
 };
 
@@ -897,7 +905,7 @@ export const compile = (srcStr: string): CompileResult => {
     const parser = MakeParser(src, codeGen);
 
     try {
-        parser.parseClass();
+        parser.parse();
     } catch (e) {
         code += String(e) + "\n";
     }

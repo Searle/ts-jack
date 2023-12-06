@@ -1,5 +1,5 @@
 export default `
-{sys_init}
+{sys-init}
   @ %_stack_address
   D=A
   @0
@@ -175,7 +175,7 @@ export default `
   M=M+1
 
 {label}
-  (%_label)
+  ( %_label )
 
 {goto}
   @ %_label

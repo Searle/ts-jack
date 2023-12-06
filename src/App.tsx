@@ -1,5 +1,5 @@
 import "./App.css";
-import HackEmulatorComp from "./components/HackEmulatorComp";
+import { HackEmulatorComp } from "./components/HackEmulatorComp";
 import HackOriginal from "./components/HackOriginal";
 
 import Ide from "./components/Ide";
@@ -9,7 +9,7 @@ import TestComp from "./hack_original/test/TestComp";
 function App() {
     return <Ide />;
     // return <HackOriginal />;
-    // return <HackEmulator />;
+    // return <HackEmulatorComp />;
 }
 
 export default App;
