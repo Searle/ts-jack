@@ -155,7 +155,7 @@ export const compileToBin = function (str: string): number[] {
         const match = line.match(/^@(\D\S*)$/);
         if (match) {
             const label = match[1];
-            if (/[.]/.test(label)) {
+            if (/[.][^\d]/.test(label)) {
                 missingSymbols[label] = index;
             }
             if (!(label in systemSymbolTable) && !(label in symbolTable)) {
@@ -193,6 +193,7 @@ export const compileToBin = function (str: string): number[] {
     }
 
     console.log(
+        str.substring(0, 100),
         lines
             .slice(0, 100)
             .map((v, i) => `${i} ${v}`)

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useHackEmulator } from "../emulators/useHackEmulator";
 import { compileToBin } from "../compilers/asmc2";
 
-// import pongAsm from "./pong.asm";
+import pongAsm from "./pong.asm";
 
 interface HackEmulatorCompProps {
     asmCode: string;
@@ -18,9 +18,8 @@ export const HackEmulatorComp: React.FC<HackEmulatorCompProps> = ({
         if (canvasRef.current) setIsCanvasReady(true);
     }, []);
 
-    const { setDelay, setRunning, setCode, emuReady } = useHackEmulator(
-        canvasRef.current
-    );
+    const { setDelay, setRunning, setCode, emuReady, running, reset } =
+        useHackEmulator(canvasRef.current);
 
     /*
     useEffect(() => {
@@ -39,6 +38,7 @@ export const HackEmulatorComp: React.FC<HackEmulatorCompProps> = ({
 */
 
     const onStartClick = () => {
+        reset();
         setCode(compileToBin(asmCode));
         setRunning(true);
     };
@@ -48,14 +48,25 @@ export const HackEmulatorComp: React.FC<HackEmulatorCompProps> = ({
     };
 
     return (
-        <div>
-            <button onClick={onStartClick}>Start</button>
-            <button onClick={onStopClick}>Stop</button>
+        <div style={{ margin: "0 10px" }}>
+            <div style={{ margin: "5px 0" }}>
+                <button disabled={running} onClick={onStartClick}>
+                    Start
+                </button>
+                &nbsp;
+                <button disabled={!running} onClick={onStopClick}>
+                    Stop
+                </button>
+            </div>
             <canvas
                 ref={canvasRef}
                 width={512}
                 height={256}
-                style={{ border: "1px solid" }}
+                style={{
+                    margin: "5px 0",
+                    width: "calc(100% - 2px)",
+                    border: "1px solid",
+                }}
             ></canvas>
         </div>
     );

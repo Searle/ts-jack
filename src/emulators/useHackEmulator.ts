@@ -33,6 +33,8 @@ const keys: Record<number, number> = {
     123: 152,
 };
 
+const noop = () => {};
+
 export const useHackEmulator = (
     canvas?: HTMLCanvasElement | null,
     onTerminalWrite?: (word: number) => void
@@ -43,7 +45,6 @@ export const useHackEmulator = (
     const [running, setRunning] = React.useState(false);
 
     React.useEffect(() => {
-        console.log("HU", canvas, onTerminalWrite);
         if (canvas !== null)
             setEmu(makeHackEmulator({ canvas, onTerminalWrite }));
     }, [canvas, onTerminalWrite]);
@@ -111,5 +112,7 @@ export const useHackEmulator = (
         setRunning,
         setCode,
         emuReady: emu !== null,
+        reset: emu ? emu.reset : noop,
+        running,
     };
 };

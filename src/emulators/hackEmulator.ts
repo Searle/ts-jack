@@ -16,7 +16,7 @@ export function makeHackEmulator({
     canvas,
     onTerminalWrite,
 }: MakeHackEmulatorProps) {
-    const ROM: number[] = new Array(32768); // 0x0000 to 0x8000
+    const ROM: number[] = new Array(32768).fill(0); // 0x0000 to 0x8000
     const RAM: number[] = new Array(24578).fill(0); // 0x0000 to 0x6000
 
     // const KEYBOARD = 24576;
@@ -30,40 +30,43 @@ export function makeHackEmulator({
     const debug = false;
     const screen = true;
 
-    const compRaw: Record<string, () => number> = {
-        "0101010": () => 0,
-        "0111111": () => 1,
-        "0111010": () => -1,
-        "0001100": () => DRegister,
-        "0110000": () => ARegister,
-        "0001101": () => ~DRegister,
-        "0110001": () => ~ARegister,
-        "0001111": () => -DRegister,
-        "0110011": () => -ARegister,
-        "0011111": () => DRegister + 1,
-        "0110111": () => ARegister + 1,
-        "0001110": () => DRegister - 1,
-        "0110010": () => ARegister - 1,
-        "0000010": () => DRegister + ARegister,
-        "0010011": () => DRegister - ARegister,
-        "0000111": () => ARegister - DRegister,
-        "0000000": () => DRegister & ARegister,
-        "0010101": () => DRegister | ARegister,
-        "1110000": () => RAM[ARegister],
-        "1110001": () => ~RAM[ARegister],
-        "1110011": () => -RAM[ARegister],
-        "1110111": () => RAM[ARegister] + 1,
-        "1110010": () => RAM[ARegister] - 1,
-        "1000010": () => DRegister + RAM[ARegister],
-        "1010011": () => DRegister - RAM[ARegister],
-        "1000111": () => RAM[ARegister] - DRegister,
-        "1000000": () => DRegister & RAM[ARegister],
-        "1010101": () => DRegister | RAM[ARegister],
+    // prettier-ignore
+    const compRaw: Record<string, [name: string, run: () => number]> = {
+        "0101010": ["0",   () => 0],
+        "0111111": ["1",   () => 1],
+        "0111010": ["-1",  () => -1],
+        "0001100": ["D",   () => DRegister],
+        "0110000": ["A",   () => ARegister],
+        "0001101": ["!D",  () => ~DRegister],
+        "0110001": ["!A",  () => ~ARegister],
+        "0001111": ["-D",  () => -DRegister],
+        "0110011": ["-A",  () => -ARegister],
+        "0011111": ["D+1", () => DRegister + 1],
+        "0110111": ["A+1", () => ARegister + 1],
+        "0001110": ["D-1", () => DRegister - 1],
+        "0110010": ["A-1", () => ARegister - 1],
+        "0000010": ["D+A", () => DRegister + ARegister],
+        "0010011": ["D-A", () => DRegister - ARegister],
+        "0000111": ["A-D", () => ARegister - DRegister],
+        "0000000": ["D&A", () => DRegister & ARegister],
+        "0010101": ["D|A", () => DRegister | ARegister],
+        "1110000": ["M",   () => RAM[ARegister]],
+        "1110001": ["!M",  () => ~RAM[ARegister]],
+        "1110011": ["-M",  () => -RAM[ARegister]],
+        "1110111": ["M+1", () => RAM[ARegister] + 1],
+        "1110010": ["M-1", () => RAM[ARegister] - 1],
+        "1000010": ["D+M", () => DRegister + RAM[ARegister]],
+        "1010011": ["D-M", () => DRegister - RAM[ARegister]],
+        "1000111": ["A-D", () => RAM[ARegister] - DRegister],
+        "1000000": ["D&M", () => DRegister & RAM[ARegister]],
+        "1010101": ["D|M", () => DRegister | RAM[ARegister]],
     };
 
-    const comp = new Array(128);
+    const comp: Array<() => number> = new Array(128);
+    const compNames: string[] = new Array(128);
     for (const [key, value] of Object.entries(compRaw)) {
-        comp[parseInt(key, 2)] = value;
+        compNames[parseInt(key, 2)] = value[0];
+        comp[parseInt(key, 2)] = value[1];
     }
 
     // Destination
@@ -99,6 +102,8 @@ export function makeHackEmulator({
         },
     ];
 
+    const destNames = ["", "M=", "D=", "MD=", "A=", "AM=", "AD=", "AMD="];
+
     const jump: Array<(value: number) => boolean> = [
         () => false,
         (val) => val > 0,
@@ -110,16 +115,56 @@ export function makeHackEmulator({
         () => true,
     ];
 
+    const jumpNames = [
+        "",
+        ";JGT",
+        ";JEQ",
+        ";JGE",
+        ";JLT",
+        ";JNE",
+        ";JLE",
+        ";JMP",
+    ];
+
+    // Instruction: ixxaccccccdddjjj
+    // i: 0 = A instruction, 1 = C instruction
+    const getOpcode = (ins: number) => ins & 0b1_00_0_000000_000_000;
+    const getComp = (ins: number) => (ins & 0b0_00_1_111111_000_000) >> 6;
+    const getDest = (ins: number) => (ins & 0b0_00_0_000000_111_000) >> 3;
+    const getJump = (ins: number) => ins & 0b0_00_0_000000_000_111;
+
+    const decode = (ins: number) => {
+        if (getOpcode(ins)) {
+            return (
+                destNames[getDest(ins)] +
+                (compNames[getComp(ins)] ?? "???") +
+                jumpNames[getJump(ins)]
+            );
+        }
+        return "@ " + ins;
+    };
+
     // Screen
     const SIZE_BITS = 512 * 256;
     const SCREEN_RAM = 16384;
     const SCREEN_RAM_END = SCREEN_RAM + SIZE_BITS / 16;
 
     const setupCanvas = () => {
+        const reset = () => {
+            ROM.fill(0);
+            RAM.fill(0);
+            PC = 0;
+            DRegister = 0;
+            ARegister = 0;
+            ALUOut = 0;
+        };
+
         if (!canvas) {
             console.log("makeHackEmulator: no canvas");
 
             return {
+                reset,
+                clearCanvas: () => {},
                 updateCanvas: () => {},
                 updateImageData: () => {},
             };
@@ -130,10 +175,14 @@ export function makeHackEmulator({
             throw "makeHackEmulator: Can't get canvas context";
         }
 
-        canvasCtx.fillStyle = "white";
-        canvasCtx.clearRect(0, 0, 512, 256);
-        canvasCtx.fillRect(0, 0, 512, 256);
-        canvasCtx.fillStyle = "black";
+        const clearCanvas = () => {
+            canvasCtx.fillStyle = "white";
+            canvasCtx.clearRect(0, 0, 512, 256);
+            canvasCtx.fillRect(0, 0, 512, 256);
+            canvasCtx.fillStyle = "black";
+        };
+
+        clearCanvas();
 
         const canvasData = canvasCtx.getImageData(
             0,
@@ -170,10 +219,18 @@ export function makeHackEmulator({
             canvasCtx.putImageData(canvasData, 0, 0);
         };
 
-        return { updateImageData, updateCanvas };
+        return {
+            reset: () => {
+                reset();
+                clearCanvas();
+            },
+            clearCanvas,
+            updateImageData,
+            updateCanvas,
+        };
     };
 
-    const { updateImageData, updateCanvas } = setupCanvas();
+    const { reset, clearCanvas, updateImageData, updateCanvas } = setupCanvas();
 
     // Set screen RAM for fast access
     // As screen is updated often
@@ -189,34 +246,20 @@ export function makeHackEmulator({
         }
     };
 
-    // Instruction: ixxaccccccdddjjj
-    // i: 0 = A instruction, 1 = C instruction
-    const getOpcode = (ins: number) => ins & 0b1_00_0_000000_000_000;
-    const getComp = (ins: number) => (ins & 0b0_00_1_111111_000_000) >> 6;
-    const getDest = (ins: number) => (ins & 0b0_00_0_000000_111_000) >> 3;
-    const getJump = (ins: number) => ins & 0b0_00_0_000000_000_111;
-
     const debugCycle = function (ins: number) {
-        if (!debug) {
-            return;
-        }
-        const opcode = getOpcode(ins);
-        console.log("Opcode ", opcode);
-        if (opcode === 0) {
-            console.log("At ", ins);
-            console.log("At (value) ", RAM[ins]);
-        }
-
-        console.log("Ins ", ins);
-        console.log("PC ", PC);
-        console.log("After Parse");
-
-        console.log("ALUOut", ALUOut);
-        console.log("AReg ", ARegister);
-        console.log("DReg ", DRegister);
-
-        console.log(RAM.slice(0, 16));
-        console.log("---");
+        const isA = getOpcode(ins) === 0;
+        console.table([
+            {
+                "": decode(ins),
+                "@": isA ? ins : "-",
+                "M@": isA ? RAM[ins] : "-",
+                PC: PC,
+                ALUOut: ALUOut,
+                A: ARegister,
+                D: DRegister,
+            },
+        ]);
+        console.log("RAM:", RAM.slice(0, 16));
     };
 
     let cyclesDone = 0;
@@ -279,13 +322,17 @@ export function makeHackEmulator({
             PC++;
         }
 
-        debugCycle(ins);
+        if (debug) {
+            debugCycle(ins);
+        }
     };
 
     const cycleA = function (ins: number) {
         ARegister = ins;
         PC++;
-        debugCycle(ins);
+        if (debug) {
+            debugCycle(ins);
+        }
     };
 
     const loadROM = function (program: number[]) {
@@ -294,7 +341,15 @@ export function makeHackEmulator({
         }
     };
 
-    return { RAM, cyclesDone, updateCanvas, cycle, loadROM };
+    return {
+        RAM,
+        cyclesDone,
+        updateCanvas,
+        cycle,
+        loadROM,
+        reset,
+        clearCanvas,
+    };
 }
 
 export type HackEmulator = ReturnType<typeof makeHackEmulator>;

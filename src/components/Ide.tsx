@@ -9,88 +9,94 @@ import SimpleRunner from "./SimpleRunner";
 import { os } from "../emulators/OS";
 import { HackEmulatorComp } from "./HackEmulatorComp";
 
-const initialSrc = `class Main {
-    function void nothing() {
-        // empty
-    }
+const clsx = (...classNames: string[]) => classNames.join(" ");
 
+const initialJackCode = `class Main {
     function void main(int length) {
-        do Screen.clearScreen();
-        do Output.print("HALLO WELT");
-/*
-        var Array a; 
-        var int dummy;
-        var int i, sum1, sum2;
-
-        let a = Array.new(length);
-        let i = 0;
-        let sum1 = 0;
-        let sum2 = 0;
-        while (i < length) {
-            if (i & 1 = 0) {
-                let sum1 = sum1 + a[i];
-            }
-            else {
-                let sum2 = sum2 + a[i];
-            }
-        }
-        return sum1 - sum2;
-*/
+        var int screen;
+        let screen = 16384;
+        let screen[1000]= 0;
+        while (1) {}
     }
 }
 `;
+
+const initialVmCode = `
+sys-init
+call Main.main 0
+(__END__)
+goto __END__
+`;
+
+const input: string = "jack";
 
 const Ide: React.FC = () => {
     const {
         targetCode: vmCode,
         setTargetCode: setVmCode,
-        srcDecors,
-        outputDecors,
-        onSrcSelectionChange,
-        onOutputSelectionChange,
+        srcDecors: jackDecors,
+        outputDecors: vmDecors,
+        onSrcSelectionChange: onJackSelectionChange,
+        onOutputSelectionChange: onVmSelectionChange,
     } = useDecors();
 
     const { targetCode: asmCode, setTargetCode: setAsmCode } = useDecors();
 
-    const onChange = (newCode: string) => {
+    const onJackChange = (jackCode: string) => {
         const initJackXX = `\n\nclass Sys {
             function void init() {
                 do Main.main();
             }
         }\n`;
-        const initJack = os();
-        const vmCode = compileJackToVm(newCode + initJack);
+        const jackInit = ""; // os();
+        const vmCode = compileJackToVm(jackCode + jackInit);
         setVmCode(vmCode);
-        const initCode =
-            "sys-init\ncall Sys.init 0\nlabel __EOF__\ngoto __EOF__\n";
-        const asmCode = compileVmToAsm("Test", initCode + vmCode.code);
+        const vmInit =
+            "sys-init\ncall Main.main 0\nlabel __EOF__\ngoto __EOF__\n";
+        const asmCode = compileVmToAsm("Test", vmInit + vmCode.code);
         setAsmCode(asmCode);
+    };
+
+    const onVmChange = (newCode: string) => {
+        if (input == "vm") {
+            // TODO vm-init
+            const asmCode = compileVmToAsm("Test", newCode);
+            setAsmCode(asmCode);
+        }
     };
 
     return (
         <div className={classes.Ide}>
             <header className={classes.header}>JACK to VM compiler</header>
             <div className={classes.content}>
-                <div className={classes.jack}>
+                {input == "jack" && (
+                    <div className={clsx(classes.column, classes.jackCode)}>
+                        <Editor
+                            onValueChange={onJackChange}
+                            initialValue={
+                                input == "jack" ? initialJackCode : undefined
+                            }
+                            decors={jackDecors}
+                            onSelectionChange={onJackSelectionChange}
+                        />
+                    </div>
+                )}
+                <div className={clsx(classes.column, classes.vmCode)}>
                     <Editor
-                        onValueChange={onChange}
-                        initialValue={initialSrc}
-                        decors={srcDecors}
-                        onSelectionChange={onSrcSelectionChange}
-                    />
-                </div>
-                <div className={classes.output}>
-                    <Editor
-                        readOnly
+                        onValueChange={onVmChange}
+                        initialValue={
+                            input === "vm" ? initialVmCode : undefined
+                        }
+                        readOnly={input !== "vm"}
                         value={vmCode.code}
-                        decors={outputDecors}
+                        decors={vmDecors}
                         // onEditorMount={setEditor1Ref}
-                        onSelectionChange={onOutputSelectionChange}
+                        onSelectionChange={onVmSelectionChange}
                     />
                 </div>
-                <div className={classes.output2}>
+                <div className={clsx(classes.column, classes.asmCode)}>
                     <HackEmulatorComp asmCode={asmCode.code} />
-                    <SimpleRunner asmCode={asmCode.code} />
+                    {/*<SimpleRunner asmCode={asmCode.code} />*/}
                     <Editor
                         readOnly
                         value={asmCode.code}
