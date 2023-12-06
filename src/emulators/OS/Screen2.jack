@@ -1,0 +1,73 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/12/Screen.jack
+
+/**
+ * A library of functions for displaying graphics on the screen.
+ * The Hack physical screen consists of 256 rows (indexed 0..255, top to bottom)
+ * of 512 pixels each (indexed 0..511, left to right). The top left pixel on
+ * the screen is indexed (0,0).
+ *
+ * This class doesn't use Memory.peek and poke as suggested in the coursera learning material
+ * because it saves a few extra VM commands that call the functions. Instead, we manipulate
+ * the array directly starting from the screen memory map base address.
+ *
+ */
+class Screen {
+    static Array screen;
+    static boolean isBlack;
+    static Array twoToThe;
+    static Array buffer;
+
+    /** Initializes the Screen. */
+    function void init() {
+      var int i;
+      let screen = 16384;
+      let isBlack = true;
+      let twoToThe = Array.new(16);
+      let twoToThe[0] = 1;
+
+      while (i < 16) {
+        let i = i + 1;
+        let twoToThe[i] = twoToThe[i-1] + twoToThe[i-1];
+      }
+      return;
+    }
+
+    /** Erases the entire screen. */
+    function void clearScreen() {
+      var int i;
+
+      while (i < 8192) {
+        let screen[i] = 0;
+        let i = i + 1;
+      }
+      return;
+    }
+
+    /** Sets the current color, to be used for all subsequent drawXXX commands.
+     *  Black is represented by true, white by false. */
+    function void setColor(boolean b) {
+      if (b) {
+        let isBlack = true;
+      } else {
+        let isBlack = false;
+      }
+      return;
+    }
+
+    /** Draws the (x,y) pixel, using the current color. */
+    function void drawPixel(int x, int y) {
+      var int addr, word;
+
+      let addr = (y * 32) + (x / 16);
+      if (isBlack) {
+        let screen[addr] = screen[addr] | twoToThe[x & 15]; // set x to 1 in the word
+      } else {
+        let screen[addr] = screen[addr] & ~twoToThe[x & 15];
+      }
+
+      return;
+    }
+}
