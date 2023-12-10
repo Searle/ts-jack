@@ -892,16 +892,18 @@ export const compile = (srcStr: string): CompileResult => {
 
     const srcMap: SrcMap = [];
 
-    const codeGen = MakeCodeGen((codeLine) => {
-        srcMap.push({
-            src: codeLine.bite.id >= 0 ? [codeLine.bite] : [],
-            tgt: {
-                start: code.length,
-                end: code.length + codeLine.code.length + 1,
-            },
-        });
-        code += codeLine.code + "\n";
-    });
+    const codeGen = MakeCodeGen(
+        ({ bite: { id, start, end }, code: newCode }) => {
+            srcMap.push({
+                src: id >= 0 ? [{ id, start, end }] : [],
+                tgt: {
+                    start: code.length,
+                    end: code.length + newCode.length + 1,
+                },
+            });
+            code += newCode + "\n";
+        }
+    );
     const parser = MakeParser(src, codeGen);
 
     try {

@@ -15,7 +15,8 @@ const initialJackCode = `class Main {
     function void main(int length) {
         var int screen;
         let screen = 16384;
-        let screen[1000]= 0;
+        let screen[1000]= -1;
+        let screen[1064]= -1;
         while (1) {}
     }
 }
@@ -35,7 +36,7 @@ const Ide: React.FC = () => {
         targetCode: vmCode,
         setTargetCode: setVmCode,
         srcDecors: jackDecors,
-        outputDecors: vmDecors,
+        outputDecors: vmOutputDecors,
         onSrcSelectionChange: onJackSelectionChange,
         onOutputSelectionChange: onVmSelectionChange,
     } = useDecors();
@@ -89,7 +90,7 @@ const Ide: React.FC = () => {
                         }
                         readOnly={input !== "vm"}
                         value={vmCode.code}
-                        decors={vmDecors}
+                        decors={vmOutputDecors}
                         // onEditorMount={setEditor1Ref}
                         onSelectionChange={onVmSelectionChange}
                     />

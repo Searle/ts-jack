@@ -37,10 +37,15 @@ const directSegments: Record<string, number> = {
 
 export const compile = (baseName: string, input: string): CompileResult => {
     let code = "";
+    const srcMap: CompileResult["srcMap"] = [];
 
-    type GenCode = (asmLine: string) => void;
+    type SrcMapSrc = CompileResult["srcMap"][number]["src"][number];
 
-    const genCode: GenCode = (asmLine) => {
+    const genCode = (srcMapSrc: SrcMapSrc, asmLine: string) => {
+        srcMap.push({
+            src: [srcMapSrc],
+            tgt: { start: code.length, end: asmLine.length },
+        });
         code += asmLine + "\n";
     };
 
@@ -53,6 +58,7 @@ export const compile = (baseName: string, input: string): CompileResult => {
     let labelNo = 0;
 
     const processSnippet = (
+        srcMapSrc: SrcMapSrc,
         snippet: string,
         subst: Record<string, string | ((asmLine: string) => void)> = {},
         comments: Record<string, string> = {}
@@ -60,7 +66,7 @@ export const compile = (baseName: string, input: string): CompileResult => {
         const snippetLines = snippets[snippet].split(/\n/);
 
         snippetLines.forEach((asmLine, index) => {
-            const al1 = asmLine;
+            // const al1 = asmLine;
             const lineComments: string[] = [];
             if (index === 0 && "title" in comments) {
                 lineComments.push(comments["title"]);
@@ -99,12 +105,18 @@ export const compile = (baseName: string, input: string): CompileResult => {
             }
 
             // genCode(asmLine + " // **" + al1);
-            genCode(asmLine);
+            genCode(srcMapSrc, asmLine);
         });
     };
 
-    const processLine = (lineIndex: number, vmLine: string) => {
-        genCode("// " + vmLine.trim());
+    const processLine = (start: number, id: number, vmLine: string) => {
+        const srcMapSrc: SrcMapSrc = {
+            id,
+            start,
+            end: vmLine.trimEnd().length,
+        };
+
+        genCode(srcMapSrc, "// " + vmLine.trim());
 
         const vmLineWithoutComment = vmLine.replace(/\s*\/\/.*$/, "");
         const rawTokens = vmLineWithoutComment.split(/(\s+)/);
@@ -124,7 +136,7 @@ export const compile = (baseName: string, input: string): CompileResult => {
         };
 
         if (command === "sys-init") {
-            return processSnippet(command, {
+            return processSnippet(srcMapSrc, command, {
                 stack_address: stackStart,
             });
         }
@@ -134,7 +146,7 @@ export const compile = (baseName: string, input: string): CompileResult => {
             command === "goto" ||
             command === "if-goto"
         ) {
-            return processSnippet(command, {
+            return processSnippet(srcMapSrc, command, {
                 label: `${baseName}_${nextToken()}`,
             });
         }
@@ -144,15 +156,15 @@ export const compile = (baseName: string, input: string): CompileResult => {
             const nArgs = nextToken();
             const nArgsI = parseInt(nArgs);
             ++returnAddress;
-            return processSnippet("call", {
+            return processSnippet(srcMapSrc, "call", {
                 set_arg: () => {
-                    genCode("@SP");
-                    genCode("D=M");
+                    genCode(srcMapSrc, "@SP");
+                    genCode(srcMapSrc, "D=M");
                     for (let i = 0; i < nArgsI; ++i) {
-                        genCode("D=D-1");
+                        genCode(srcMapSrc, "D=D-1");
                     }
-                    genCode("@R13");
-                    genCode("M=D");
+                    genCode(srcMapSrc, "@R13");
+                    genCode(srcMapSrc, "M=D");
                 },
                 return_address: baseName + "_Return_" + returnAddress,
                 function_name: fName,
@@ -163,10 +175,11 @@ export const compile = (baseName: string, input: string): CompileResult => {
             const fName = nextToken();
             const nLocals = nextToken();
             const nLocalsI = parseInt(nLocals);
-            return processSnippet("function", {
+            return processSnippet(srcMapSrc, "function", {
                 local_vars: () => {
                     for (let i = 0; i < nLocalsI; i++) {
                         processSnippet(
+                            srcMapSrc,
                             "init-local-vars",
                             {},
                             { title: ` (var #${i})` }
@@ -181,7 +194,9 @@ export const compile = (baseName: string, input: string): CompileResult => {
             const segment = nextToken();
             const index = nextToken();
             if (command == "push" && segment === "constant") {
-                return processSnippet("push-constant", { literal: index });
+                return processSnippet(srcMapSrc, "push-constant", {
+                    literal: index,
+                });
             }
             if (segment in directSegments) {
                 const address =
@@ -191,6 +206,7 @@ export const compile = (baseName: string, input: string): CompileResult => {
                               directSegments[segment] + parseInt(index)
                           ).toString();
                 return processSnippet(
+                    srcMapSrc,
                     `${command}-direct`,
                     {
                         source_address: address,
@@ -204,6 +220,7 @@ export const compile = (baseName: string, input: string): CompileResult => {
             }
             if (segment in indirectSegments) {
                 return processSnippet(
+                    srcMapSrc,
                     `${command}-indirect`,
                     {
                         base_pointer: indirectSegments[segment].toString(),
@@ -218,18 +235,21 @@ export const compile = (baseName: string, input: string): CompileResult => {
         }
 
         if (command in snippets) {
-            return processSnippet(command);
+            return processSnippet(srcMapSrc, command);
         }
 
         throw new VmcError("Unknown command: " + vmLine);
     };
 
-    for (const [lineIndex, line] of input.split(/\r?\n/).entries()) {
-        processLine(lineIndex, line);
-    }
-
-    return {
-        code,
-        srcMap: [], // TODO
+    const process = () => {
+        let start = 0;
+        for (const [lineIndex, line] of input.split(/\n/).entries()) {
+            processLine(lineIndex, start, line);
+            start += line.length + 1;
+        }
     };
+
+    process();
+
+    return { code, srcMap };
 };
